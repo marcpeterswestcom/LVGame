@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vegas Strip Survivor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Russo+One&family=Press+Start+2P&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    font-family: 'Russo One', sans-serif;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #ui-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  #drunk-meter {
+    position: absolute;
+    top: 16px; left: 16px;
+    width: 220px;
+  }
+
+  #drunk-meter .label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #ffcc00;
+    text-shadow: 0 0 8px #ffcc0080;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  #drunk-meter .bar-bg {
+    width: 100%;
+    height: 18px;
+    background: #1a1a2e;
+    border: 2px solid #333;
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  #drunk-meter .bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 7px;
+    transition: width 0.3s, background 0.3s;
+    background: linear-gradient(90deg, #00ff88, #ffcc00, #ff4444);
+  }
+
+  #progress-bar {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 220px;
+  }
+
+  #progress-bar .label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #00ccff;
+    text-shadow: 0 0 8px #00ccff80;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+    text-align: right;
+  }
+
+  #progress-bar .bar-bg {
+    width: 100%;
+    height: 18px;
+    background: #1a1a2e;
+    border: 2px solid #333;
+    border-radius: 9px;
+    overflow: hidden;
+  }
+
+  #progress-bar .bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 7px;
+    transition: width 0.3s;
+    background: linear-gradient(90deg, #0066ff, #00ccff, #00ffcc);
+  }
+
+  #wallet-display {
+    position: absolute;
+    top: 50px; left: 16px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #00ff66;
+    text-shadow: 0 0 8px #00ff6660;
+  }
+
+  #landmark-name {
+    position: absolute;
+    top: 60px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bungee Shade', cursive;
+    font-size: 24px;
+    color: #ffcc00;
+    text-shadow: 0 0 20px #ffcc0080, 0 0 40px #ff660040;
+    opacity: 0;
+    transition: opacity 0.5s;
+    white-space: nowrap;
+  }
+
+  #score-display {
+    position: absolute;
+    bottom: 16px; right: 16px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #ff66aa;
+    text-shadow: 0 0 8px #ff66aa60;
+  }
+
+  #drink-tracker {
+    position: absolute;
+    bottom: 16px; left: 16px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: #ffcc00;
+    text-shadow: 0 0 8px #ffcc0060;
+    line-height: 1.8;
+  }
+
+  #drink-icons {
+    font-size: 14px;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  #start-screen, #end-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0a0f 70%);
+    z-index: 10;
+    pointer-events: all;
+  }
+
+  #end-screen { display: none; }
+
+  .title {
+    font-family: 'Bungee Shade', cursive;
+    font-size: 42px;
+    color: #ffcc00;
+    text-shadow: 0 0 30px #ffcc0060, 0 0 60px #ff660030, 3px 3px 0 #ff0066;
+    margin-bottom: 12px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #ff66aa;
+    text-shadow: 0 0 10px #ff66aa50;
+    margin-bottom: 40px;
+    text-align: center;
+    line-height: 2;
+    max-width: 500px;
+  }
+
+  .start-btn {
+    font-family: 'Russo One', sans-serif;
+    font-size: 18px;
+    color: #0a0a0f;
+    background: linear-gradient(135deg, #ffcc00, #ff9900);
+    border: none;
+    padding: 14px 48px;
+    border-radius: 50px;
+    cursor: pointer;
+    pointer-events: all;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    box-shadow: 0 0 30px #ffcc0050, 0 4px 15px #00000050;
+    transition: all 0.2s;
+  }
+
+  .start-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 50px #ffcc0070, 0 4px 20px #00000060;
+  }
+
+  .controls-info {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: #666;
+    margin-top: 24px;
+    text-align: center;
+    line-height: 2.2;
+  }
+
+  .end-title {
+    font-family: 'Bungee Shade', cursive;
+    font-size: 36px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .end-stats {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #ffcc00;
+    margin-bottom: 24px;
+    line-height: 2;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui-overlay">
+  <div id="drunk-meter">
+    <div class="label">DRUNK LEVEL</div>
+    <div class="bar-bg"><div class="bar-fill" id="drunk-fill"></div></div>
+  </div>
+  <div id="progress-bar">
+    <div class="label">THE STRIP</div>
+    <div class="bar-bg"><div class="bar-fill" id="progress-fill"></div></div>
+  </div>
+  <div id="wallet-display">$500</div>
+  <div id="landmark-name"></div>
+  <div id="score-display">SCORE: 0</div>
+  <div id="drink-tracker">
+    <div>DRINKS: 0/15</div>
+    <div id="drink-icons"></div>
+  </div>
+</div>
+
+<div id="start-screen">
+  <div class="title">VEGAS STRIP<br>SURVIVOR</div>
+  <div class="subtitle">Walk the entire Strip without<br>going broke or blacking out!</div>
+  <button class="start-btn" onclick="startGame()">HIT THE STRIP</button>
+  <div class="controls-info">
+    LEFT / RIGHT to dodge<br>
+    UP to sprint &middot; DOWN to slow down<br>
+    Grab drinks for points (watch your meter!)<br>
+    Collect all 15 drinks for a BONUS<br>
+    Dodge showgirls, flyer guys & more!
+  </div>
+</div>
+
+<div id="end-screen">
+  <div class="end-title" id="end-title"></div>
+  <div class="end-stats" id="end-stats"></div>
+  <button class="start-btn" onclick="startGame()">TRY AGAIN</button>
+</div>
+
+<script>
+// ============================================================
+// CANVAS SETUP
+// ============================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const LANE_COUNT = 5;
+const LANE_POSITIONS = [-0.6, -0.3, 0, 0.3, 0.6];
+const VIEW_DISTANCE = 120; // how many world units we can see ahead
+const TOTAL_DISTANCE = 3000;
+const SEGMENT_LENGTH = 2; // world units per road segment
+// Player appears at t=0.88 on screen; this is the matching world depth for collisions
+const PLAYER_Z = VIEW_DISTANCE * (1 - 0.88) + 1; // ~15.4
+
+const LANDMARKS = [
+  { dist: 0, name: "Mandalay Bay", color: "#FFD700" },
+  { dist: 0.09, name: "Luxor", color: "#FF6600" },
+  { dist: 0.18, name: "Excalibur", color: "#CC33FF" },
+  { dist: 0.27, name: "MGM Grand", color: "#00CC66" },
+  { dist: 0.36, name: "Bellagio", color: "#3399FF" },
+  { dist: 0.45, name: "Caesars Palace", color: "#FFD700" },
+  { dist: 0.55, name: "The Venetian", color: "#FF9966" },
+  { dist: 0.64, name: "Treasure Island", color: "#FF3366" },
+  { dist: 0.73, name: "Wynn", color: "#CC0000" },
+  { dist: 0.82, name: "Circus Circus", color: "#FF66CC" },
+  { dist: 1.0, name: "Stratosphere", color: "#00FFCC" },
+];
+
+// ============================================================
+// DRINK TYPES (15 collectible drinks)
+// ============================================================
+const DRINK_TYPES = [
+  { name: 'Seltzer',       emoji: '\u{1F95B}', points: 10,  drunk: 3,  color: '#aaddff', glassType: 'tall' },
+  { name: 'Light Beer',    emoji: '\u{1F37A}', points: 15,  drunk: 5,  color: '#f5d76e', glassType: 'pint' },
+  { name: 'Lager',         emoji: '\u{1F37A}', points: 20,  drunk: 6,  color: '#d4a017', glassType: 'pint' },
+  { name: 'IPA',           emoji: '\u{1F37A}', points: 25,  drunk: 7,  color: '#cc8800', glassType: 'pint' },
+  { name: 'Wine',          emoji: '\u{1F377}', points: 30,  drunk: 8,  color: '#8b0000', glassType: 'wine' },
+  { name: 'Margarita',     emoji: '\u{1F378}', points: 35,  drunk: 9,  color: '#7fff00', glassType: 'cocktail' },
+  { name: 'Mojito',        emoji: '\u{1F378}', points: 35,  drunk: 9,  color: '#00ff7f', glassType: 'cocktail' },
+  { name: 'Tequila Shot',  emoji: '\u{1F943}', points: 40,  drunk: 10, color: '#ffcc00', glassType: 'shot' },
+  { name: 'Daiquiri',      emoji: '\u{1F379}', points: 40,  drunk: 10, color: '#ff6699', glassType: 'cocktail' },
+  { name: 'Old Fashioned', emoji: '\u{1F943}', points: 45,  drunk: 11, color: '#8b4513', glassType: 'rocks' },
+  { name: 'Whiskey Sour',  emoji: '\u{1F943}', points: 50,  drunk: 12, color: '#daa520', glassType: 'rocks' },
+  { name: 'Long Island',   emoji: '\u{1F378}', points: 60,  drunk: 14, color: '#cd853f', glassType: 'tall' },
+  { name: 'Absinthe',      emoji: '\u{1F378}', points: 70,  drunk: 16, color: '#00ff00', glassType: 'cocktail' },
+  { name: 'Martini',       emoji: '\u{1F378}', points: 80,  drunk: 18, color: '#e0e0e0', glassType: 'cocktail' },
+  { name: 'Champagne',     emoji: '\u{1F37E}', points: 90,  drunk: 20, color: '#ffe4b5', glassType: 'flute' },
+];
+
+// ============================================================
+// OBSTACLE TYPES (Vegas Traps)
+// ============================================================
+const OBSTACLE_TYPES = [
+  { type: 'showgirl',     cost: 30, speed: 0.7, hitbox: 0.12, behavior: 'zigzag' },
+  { type: 'costumed',     cost: 20, speed: 0.4, hitbox: 0.18, behavior: 'straight' },
+  { type: 'flyerGuy',     cost: 15, speed: 1.2, hitbox: 0.10, behavior: 'homing' },
+  { type: 'beggar',       cost: 10, speed: 0,   hitbox: 0.10, behavior: 'stationary' },
+  { type: 'performer',    cost: 25, speed: 0.3, hitbox: 0.14, behavior: 'wander' },
+  { type: 'drunkTourist', cost: 40, speed: 0.6, hitbox: 0.12, behavior: 'homing' },
+];
+
+const POWERUP_TYPES = [
+  { name: 'Water',  drunk: -15, points: 10, color: '#00aaff', emoji: '\u{1F4A7}' },
+  { name: 'Coffee', drunk: -10, points: 10, color: '#8b4513', emoji: '\u{2615}' },
+  { name: 'Taco',   drunk: -8,  points: 15, color: '#ff8c00', emoji: '\u{1F32E}' },
+  { name: 'Pizza',  drunk: -12, points: 15, color: '#ff6347', emoji: '\u{1F355}' },
+];
+
+// ============================================================
+// GAME STATE
+// ============================================================
+let game = null;
+let keys = {};
+let keysJustPressed = {};
+let animFrame = null;
+
+function createGame() {
+  return {
+    player: { lane: 2, targetLane: 2, worldX: 0, bobble: 0, sprinting: false },
+    camera: { z: 0, speed: 2.5 },
+    drunkLevel: 0,
+    maxDrunk: 100,
+    wallet: 500,
+    distance: 0,
+    score: 0,
+    obstacles: [],
+    drinks: [],
+    powerups: [],
+    particles: [],
+    buildings: generateBuildings(),
+    stars: generateStars(),
+    spawnTimer: 0,
+    drinkTimer: 0,
+    powerupTimer: 0,
+    time: 0,
+    state: 'playing',
+    lastLandmark: -1,
+    drinksCollected: new Set(),
+    collectionBonuses: 0,
+    flash: { active: false, color: '', alpha: 0 },
+    combo: 0,
+  };
+}
+
+function generateStars() {
+  const stars = [];
+  for (let i = 0; i < 120; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random() * 0.3,
+      size: Math.random() * 2 + 0.5,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: Math.random() * 2 + 1,
+    });
+  }
+  return stars;
+}
+
+function generateBuildings() {
+  const buildings = [];
+  const casinoNames = [
+    'SLOTS', 'CASINO', 'BAR', 'LOUNGE', 'POKER', 'CLUB',
+    'JACKPOT', 'LUCKY', 'NEON', 'ROYAL', 'ACE', 'GOLD',
+    'STAR', 'DIAMOND', '777', 'WINS', 'PALACE', 'OASIS',
+  ];
+  for (let i = 0; i < 400; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    buildings.push({
+      worldZ: i * 2.5 + Math.random() * 1.5,
+      side: side,
+      height: 100 + Math.random() * 300,
+      width: 60 + Math.random() * 80,
+      color: `hsl(${Math.random() * 360}, 40%, ${10 + Math.random() * 8}%)`,
+      neonColor: `hsl(${Math.random() * 360}, 100%, 60%)`,
+      windowRows: Math.floor(Math.random() * 8) + 3,
+      windowCols: Math.floor(Math.random() * 4) + 2,
+      signText: Math.random() > 0.4 ? casinoNames[Math.floor(Math.random() * casinoNames.length)] : null,
+      hasPalm: Math.random() > 0.65,
+    });
+  }
+  return buildings;
+}
+
+// ============================================================
+// PROJECTION — simple and correct pseudo-3D
+// ============================================================
+// relZ = distance ahead of camera (0 = at camera, VIEW_DISTANCE = horizon)
+// worldX = lateral position (-1 to 1 range, 0 = center)
+// Returns screen coordinates and a scale factor (1 = closest, 0 = horizon)
+function project(worldX, relZ) {
+  const W = canvas.width, H = canvas.height;
+  const horizonY = H * 0.35;
+  const groundY = H;
+  const vanishX = W / 2;
+  const roadHW = W * 0.28; // half-width of road at bottom of screen
+
+  // Clamp to avoid division by zero or negative
+  const z = Math.max(relZ, 0.5);
+  // Scale: 1 at z=1, approaches 0 at z=VIEW_DISTANCE
+  const scale = 10 / (z + 10);
+
+  const sx = vanishX + worldX * roadHW * scale / 0.5; // /0.5 because scale=0.5 at z=10
+  const sy = horizonY + (groundY - horizonY) * scale;
+  return { sx, sy, scale };
+}
+
+// ============================================================
+// SPAWNING
+// ============================================================
+function spawnObstacle() {
+  const info = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+  const lane = Math.floor(Math.random() * LANE_COUNT);
+  game.obstacles.push({
+    ...info,
+    lane: lane,
+    worldX: LANE_POSITIONS[lane],
+    worldZ: game.camera.z + VIEW_DISTANCE + Math.random() * 20,
+    phase: Math.random() * Math.PI * 2,
+    age: 0,
+    costumeColor: `hsl(${Math.random() * 360}, 80%, 50%)`,
+  });
+}
+
+function spawnDrink() {
+  const uncollected = DRINK_TYPES.filter((_, i) => !game.drinksCollected.has(i));
+  let drinkIndex;
+  if (uncollected.length > 0 && Math.random() > 0.3) {
+    const candidates = DRINK_TYPES.map((d, i) => i).filter(i => !game.drinksCollected.has(i));
+    drinkIndex = candidates[Math.floor(Math.random() * candidates.length)];
+  } else {
+    drinkIndex = Math.floor(Math.random() * DRINK_TYPES.length);
+  }
+  const info = DRINK_TYPES[drinkIndex];
+  const lane = Math.floor(Math.random() * LANE_COUNT);
+  game.drinks.push({
+    ...info,
+    drinkIndex: drinkIndex,
+    lane: lane,
+    worldX: LANE_POSITIONS[lane],
+    worldZ: game.camera.z + VIEW_DISTANCE + Math.random() * 15,
+    bobble: Math.random() * Math.PI * 2,
+  });
+}
+
+function spawnPowerup() {
+  const info = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+  const lane = Math.floor(Math.random() * LANE_COUNT);
+  game.powerups.push({
+    ...info,
+    lane: lane,
+    worldX: LANE_POSITIONS[lane],
+    worldZ: game.camera.z + VIEW_DISTANCE + Math.random() * 15,
+    bobble: Math.random() * Math.PI * 2,
+  });
+}
+
+function spawnParticles(sx, sy, color, count) {
+  for (let i = 0; i < count; i++) {
+    game.particles.push({
+      x: sx, y: sy,
+      vx: (Math.random() - 0.5) * 200,
+      vy: (Math.random() - 0.5) * 200 - 100,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      color: color,
+      size: 2 + Math.random() * 4,
+    });
+  }
+}
+
+// ============================================================
+// UPDATE
+// ============================================================
+function update(dt) {
+  if (game.state !== 'playing') return;
+
+  game.time += dt;
+  game.spawnTimer += dt;
+  game.drinkTimer += dt;
+  game.powerupTimer += dt;
+
+  const progress = game.distance / TOTAL_DISTANCE;
+  const difficulty = 1 + progress * 2;
+  const baseSpeed = 8 + progress * 6;
+
+  // Sprint / slow
+  let speedMult = 1;
+  if (keys['ArrowUp'] || keys['KeyW']) { speedMult = 1.6; game.player.sprinting = true; }
+  else if (keys['ArrowDown'] || keys['KeyS']) { speedMult = 0.5; game.player.sprinting = false; }
+  else { game.player.sprinting = false; }
+
+  game.camera.speed = baseSpeed * speedMult;
+  game.camera.z += game.camera.speed * dt;
+  game.distance = game.camera.z;
+
+  // Lane input
+  const drunkRatio = game.drunkLevel / game.maxDrunk;
+  if (keysJustPressed['ArrowLeft'] || keysJustPressed['KeyA']) {
+    let target = game.player.targetLane - 1;
+    if (drunkRatio > 0.5 && Math.random() < (drunkRatio - 0.5) * 0.3) target = game.player.targetLane + 1;
+    game.player.targetLane = Math.max(0, Math.min(LANE_COUNT - 1, target));
+  }
+  if (keysJustPressed['ArrowRight'] || keysJustPressed['KeyD']) {
+    let target = game.player.targetLane + 1;
+    if (drunkRatio > 0.5 && Math.random() < (drunkRatio - 0.5) * 0.3) target = game.player.targetLane - 1;
+    game.player.targetLane = Math.max(0, Math.min(LANE_COUNT - 1, target));
+  }
+  keysJustPressed = {};
+
+  // Random drunk drift
+  if (drunkRatio > 0.4 && Math.random() < drunkRatio * 0.005) {
+    game.player.targetLane += Math.random() > 0.5 ? 1 : -1;
+    game.player.targetLane = Math.max(0, Math.min(LANE_COUNT - 1, game.player.targetLane));
+  }
+
+  // Smooth lane interpolation
+  const targetX = LANE_POSITIONS[game.player.targetLane];
+  const lerpSpeed = 8 - drunkRatio * 4;
+  game.player.worldX += (targetX - game.player.worldX) * lerpSpeed * dt;
+  game.player.bobble += dt * (game.player.sprinting ? 14 : 10);
+
+  // Spawning
+  const spawnRate = Math.max(0.4, 1.4 - difficulty * 0.2);
+  if (game.spawnTimer > spawnRate) {
+    spawnObstacle();
+    if (difficulty > 1.5) spawnObstacle();
+    game.spawnTimer = 0;
+  }
+  if (game.drinkTimer > 3.0) { spawnDrink(); game.drinkTimer = 0; }
+  if (game.powerupTimer > 4.0) { spawnPowerup(); game.powerupTimer = 0; }
+
+  // Update obstacles
+  for (let i = game.obstacles.length - 1; i >= 0; i--) {
+    const o = game.obstacles[i];
+    o.age += dt;
+    const relZ = o.worldZ - game.camera.z;
+
+    switch (o.behavior) {
+      case 'zigzag':
+        o.worldX = LANE_POSITIONS[o.lane] + Math.sin(o.age * 2.5 + o.phase) * 0.25;
+        break;
+      case 'homing':
+        o.worldX += (game.player.worldX - o.worldX) * o.speed * dt * 0.5;
+        break;
+      case 'wander':
+        o.worldX = LANE_POSITIONS[o.lane] + Math.sin(o.age * 1.5 + o.phase) * 0.2;
+        break;
+    }
+
+    const xDist = Math.abs(game.player.worldX - o.worldX);
+    if (Math.abs(relZ - PLAYER_Z) < 4 && xDist < o.hitbox + 0.05) {
+      game.wallet -= o.cost;
+      game.score -= o.cost;
+      game.combo = 0;
+      const p = project(o.worldX, Math.max(relZ, 0.5));
+      spawnParticles(p.sx, p.sy, '#ff4444', 10);
+      game.flash = { active: true, color: 'rgba(255,0,0,0.15)', alpha: 0.4 };
+      game.obstacles.splice(i, 1);
+      continue;
+    }
+    if (relZ < -5) {
+      game.score += 10;
+      game.combo++;
+      game.obstacles.splice(i, 1);
+    }
+  }
+
+  // Update drinks
+  for (let i = game.drinks.length - 1; i >= 0; i--) {
+    const d = game.drinks[i];
+    d.bobble += dt * 4;
+    const relZ = d.worldZ - game.camera.z;
+    const xDist = Math.abs(game.player.worldX - d.worldX);
+
+    if (Math.abs(relZ - PLAYER_Z) < 4 && xDist < 0.15) {
+      game.drunkLevel = Math.min(game.maxDrunk, game.drunkLevel + d.drunk);
+      game.score += d.points;
+      game.drinksCollected.add(d.drinkIndex);
+      const p = project(d.worldX, Math.max(relZ, 0.5));
+      spawnParticles(p.sx, p.sy, d.color, 12);
+      game.flash = { active: true, color: 'rgba(255,204,0,0.12)', alpha: 0.3 };
+      if (game.drinksCollected.size >= DRINK_TYPES.length) {
+        game.score += 500;
+        game.collectionBonuses++;
+        game.drinksCollected.clear();
+        game.flash = { active: true, color: 'rgba(255,215,0,0.3)', alpha: 0.6 };
+      }
+      game.drinks.splice(i, 1);
+      continue;
+    }
+    if (relZ < -5) game.drinks.splice(i, 1);
+  }
+
+  // Update powerups
+  for (let i = game.powerups.length - 1; i >= 0; i--) {
+    const pu = game.powerups[i];
+    pu.bobble += dt * 4;
+    const relZ = pu.worldZ - game.camera.z;
+    const xDist = Math.abs(game.player.worldX - pu.worldX);
+
+    if (Math.abs(relZ - PLAYER_Z) < 4 && xDist < 0.16) {
+      game.drunkLevel = Math.max(0, game.drunkLevel + pu.drunk);
+      game.score += pu.points;
+      const p = project(pu.worldX, Math.max(relZ, 0.5));
+      spawnParticles(p.sx, p.sy, '#00ff88', 12);
+      game.flash = { active: true, color: 'rgba(0,255,136,0.12)', alpha: 0.3 };
+      game.powerups.splice(i, 1);
+      continue;
+    }
+    if (relZ < -5) game.powerups.splice(i, 1);
+  }
+
+  // Particles
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const p = game.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 300 * dt;
+    p.life -= p.decay;
+    if (p.life <= 0) game.particles.splice(i, 1);
+  }
+
+  // Flash
+  if (game.flash.active) {
+    game.flash.alpha -= dt * 2;
+    if (game.flash.alpha <= 0) game.flash.active = false;
+  }
+
+  // Drunk decay
+  game.drunkLevel = Math.max(0, game.drunkLevel - dt * 1.5);
+
+  // Landmarks
+  for (let i = 0; i < LANDMARKS.length; i++) {
+    if (progress >= LANDMARKS[i].dist && i > game.lastLandmark) {
+      game.lastLandmark = i;
+      showLandmark(LANDMARKS[i].name, LANDMARKS[i].color);
+    }
+  }
+
+  // Win/lose
+  if (game.wallet <= 0) { game.state = 'broke'; showEndScreen('broke'); }
+  if (game.drunkLevel >= game.maxDrunk) { game.state = 'blackout'; showEndScreen('blackout'); }
+  if (game.distance >= TOTAL_DISTANCE) { game.state = 'won'; showEndScreen('won'); }
+
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('drunk-fill').style.width = (game.drunkLevel / game.maxDrunk * 100) + '%';
+  document.getElementById('progress-fill').style.width = Math.min(100, game.distance / TOTAL_DISTANCE * 100) + '%';
+  document.getElementById('wallet-display').textContent = `$${Math.max(0, game.wallet)}`;
+  document.getElementById('score-display').textContent = `SCORE: ${Math.max(0, Math.floor(game.score))}`;
+  const collected = game.drinksCollected.size;
+  document.getElementById('drink-tracker').innerHTML =
+    `<div>DRINKS: ${collected}/15</div><div id="drink-icons">${DRINK_TYPES.map((d, i) =>
+      `<span style="opacity:${game.drinksCollected.has(i) ? '1' : '0.25'}">${d.emoji}</span>`
+    ).join('')}</div>`;
+}
+
+function showLandmark(name, color) {
+  const el = document.getElementById('landmark-name');
+  el.textContent = name;
+  el.style.color = color;
+  el.style.textShadow = `0 0 20px ${color}80, 0 0 40px ${color}40`;
+  el.style.opacity = 1;
+  setTimeout(() => el.style.opacity = 0, 2500);
+}
+
+function showEndScreen(result) {
+  const screen = document.getElementById('end-screen');
+  const title = document.getElementById('end-title');
+  const stats = document.getElementById('end-stats');
+  screen.style.display = 'flex';
+  const landmarkName = game.lastLandmark >= 0 ? LANDMARKS[game.lastLandmark].name : 'the start';
+  if (result === 'won') {
+    title.textContent = 'YOU MADE IT!';
+    title.style.color = '#00ffcc';
+    title.style.textShadow = '0 0 30px #00ffcc60, 3px 3px 0 #0066ff';
+    stats.innerHTML = `SCORE: ${Math.floor(game.score)}<br>WALLET: $${game.wallet}<br>DRINKS: ${game.drinksCollected.size}/15<br>BONUSES: ${game.collectionBonuses}`;
+  } else if (result === 'blackout') {
+    title.textContent = 'BLACKED OUT!';
+    title.style.color = '#ff4444';
+    title.style.textShadow = '0 0 30px #ff444460, 3px 3px 0 #990000';
+    stats.innerHTML = `Made it to ${landmarkName}<br>SCORE: ${Math.floor(game.score)}`;
+  } else {
+    title.textContent = 'WENT BROKE!';
+    title.style.color = '#ff8800';
+    title.style.textShadow = '0 0 30px #ff880060, 3px 3px 0 #884400';
+    stats.innerHTML = `Made it to ${landmarkName}<br>SCORE: ${Math.floor(game.score)}`;
+  }
+}
+
+// ============================================================
+// DRAWING
+// ============================================================
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  const horizonY = H * 0.35;
+  const vanishX = W / 2;
+  const roadHW = W * 0.28;
+  const drunkRatio = game ? game.drunkLevel / game.maxDrunk : 0;
+
+  ctx.save();
+
+  // Drunk camera sway
+  if (game && drunkRatio > 0.2) {
+    const intensity = (drunkRatio - 0.2) * 20;
+    ctx.translate(Math.sin(game.time * 1.5) * intensity, Math.cos(game.time * 1.1) * intensity * 0.4);
+  }
+
+  // ---- SKY ----
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0, '#030308');
+  skyGrad.addColorStop(0.4, '#0a0a25');
+  skyGrad.addColorStop(0.8, '#15102a');
+  skyGrad.addColorStop(1, '#201535');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, horizonY + 5);
+
+  // City glow at horizon
+  const glowGrad = ctx.createRadialGradient(vanishX, horizonY, 0, vanishX, horizonY, W * 0.5);
+  glowGrad.addColorStop(0, 'rgba(255, 100, 50, 0.2)');
+  glowGrad.addColorStop(0.3, 'rgba(255, 60, 100, 0.1)');
+  glowGrad.addColorStop(1, 'transparent');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(0, horizonY - 60, W, 80);
+
+  // Stars
+  if (game) {
+    game.stars.forEach(s => {
+      s.twinkle += 0.015 * s.speed;
+      const alpha = 0.3 + Math.sin(s.twinkle) * 0.4;
+      ctx.fillStyle = `rgba(255, 255, 220, ${Math.max(0, alpha)})`;
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // ---- GROUND (everything below horizon) ----
+  // Fill entire ground area first with a dark base
+  ctx.fillStyle = '#0f0f18';
+  ctx.fillRect(0, horizonY, W, H - horizonY);
+
+  // ---- ROAD (scanline rendering) ----
+  const camZ = game ? game.camera.z : 0;
+  const stripH = 2;
+
+  for (let screenY = Math.floor(horizonY); screenY < H; screenY += stripH) {
+    const t = (screenY - horizonY) / (H - horizonY);
+    if (t <= 0.001) continue;
+
+    const depth = VIEW_DISTANCE * (1 - t) + 1;
+    const worldZ = depth + camZ;
+    const seg = Math.floor(worldZ / SEGMENT_LENGTH);
+
+    const scale = t;
+    const rw = roadHW * scale;
+    const sidewalkW = rw * 1.4;
+
+    // Sidewalk - concrete gray, subtle alternation
+    ctx.fillStyle = seg % 2 === 0 ? '#252530' : '#222228';
+    ctx.fillRect(vanishX - sidewalkW, screenY, sidewalkW * 2, stripH);
+
+    // Road surface - dark asphalt
+    ctx.fillStyle = seg % 2 === 0 ? '#2a2a33' : '#252530';
+    ctx.fillRect(vanishX - rw, screenY, rw * 2, stripH);
+
+    // Center stripe (dashed yellow)
+    if (seg % 3 === 0) {
+      ctx.fillStyle = '#ffcc0050';
+      const sw = Math.max(1, rw * 0.015);
+      ctx.fillRect(vanishX - sw, screenY, sw * 2, stripH);
+    }
+
+    // Lane dividers
+    if (seg % 4 === 0) {
+      ctx.fillStyle = '#ffffff12';
+      for (let l = 0; l < LANE_COUNT; l++) {
+        const laneX = vanishX + LANE_POSITIONS[l] * rw / 0.7;
+        ctx.fillRect(laneX - 0.5, screenY, 1, stripH);
+      }
+    }
+
+    // Curb edges (bright line)
+    const curbW = Math.max(1, 2 * scale);
+    ctx.fillStyle = '#666660';
+    ctx.fillRect(vanishX - rw - curbW, screenY, curbW, stripH);
+    ctx.fillRect(vanishX + rw, screenY, curbW, stripH);
+  }
+
+  // ---- BUILDINGS (drawn on both sides) ----
+  if (game) {
+    const visBuildings = [];
+    for (const b of game.buildings) {
+      const relZ = b.worldZ - camZ;
+      if (relZ > 0.5 && relZ < VIEW_DISTANCE) visBuildings.push({ b, relZ });
+    }
+    visBuildings.sort((a, b) => b.relZ - a.relZ);
+
+    for (const { b, relZ } of visBuildings) {
+      const t = 1 - (relZ - 1) / (VIEW_DISTANCE - 1);
+      if (t <= 0 || t > 1) continue;
+
+      const scale = t;
+      const screenY = horizonY + (H - horizonY) * t;
+      const rw = roadHW * scale;
+      const sidewalkW = rw * 1.4;
+      const bw = b.width * scale;
+      const bh = b.height * scale;
+
+      let bx;
+      if (b.side < 0) {
+        bx = vanishX - sidewalkW - bw * 0.3;
+      } else {
+        bx = vanishX + sidewalkW - bw * 0.7;
+      }
+      const by = screenY - bh;
+      if (bw < 2 || bh < 2) continue;
+
+      // Building body - darker base with gradient
+      ctx.fillStyle = b.color;
+      ctx.fillRect(bx, by, bw, bh);
+
+      // Lighter face edge for 3D effect
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(bx, by, bw * 0.15, bh);
+
+      // Roof line
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(bx, by, bw, Math.max(1, 2 * scale));
+
+      // Neon outline - SUBTLE, no shadowBlur (prevents color bleeding)
+      const pulse = 0.5 + Math.sin(game.time * 3 + b.worldZ * 0.1) * 0.3;
+      ctx.strokeStyle = b.neonColor + '40';
+      ctx.lineWidth = Math.max(0.5, scale * 1.5);
+      ctx.strokeRect(bx, by, bw, bh);
+
+      // Small neon accent line at top of building (instead of full glow)
+      ctx.fillStyle = b.neonColor + '60';
+      ctx.fillRect(bx, by - Math.max(1, 2 * scale), bw, Math.max(1, 2 * scale));
+
+      // Windows
+      if (bw > 8 && bh > 12) {
+        const wCols = b.windowCols;
+        const wRows = Math.min(b.windowRows, Math.floor(bh / 6));
+        const ww = bw / (wCols * 2 + 1);
+        const wh = bh / (wRows * 2 + 1);
+        if (ww > 1.5 && wh > 1.5) {
+          for (let r = 0; r < wRows; r++) {
+            for (let c = 0; c < wCols; c++) {
+              const wx = bx + ww * (c * 2 + 1);
+              const wy = by + wh * (r * 2 + 1);
+              const lit = Math.sin(game.time * 0.5 + b.worldZ * 0.3 + r + c * 3) > -0.3;
+              ctx.fillStyle = lit ? '#ffee8855' : '#ffffff08';
+              ctx.fillRect(wx, wy, Math.max(1, ww * 0.8), Math.max(1, wh * 0.6));
+            }
+          }
+        }
+      }
+
+      // Awning / entrance at ground level (for closer buildings)
+      if (scale > 0.25 && bw > 20) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        const awH = Math.max(3, 8 * scale);
+        ctx.fillRect(bx + bw * 0.15, screenY - awH, bw * 0.7, awH);
+        ctx.fillStyle = b.neonColor + '30';
+        ctx.fillRect(bx + bw * 0.15, screenY - awH, bw * 0.7, Math.max(1, 1.5 * scale));
+      }
+
+      // Neon sign text - use save/restore to isolate shadowBlur
+      if (b.signText && scale > 0.1 && bw > 20) {
+        ctx.save();
+        const fontSize = Math.max(7, Math.floor(14 * scale));
+        ctx.font = `bold ${fontSize}px 'Press Start 2P', monospace`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = b.neonColor;
+        ctx.shadowBlur = Math.min(8, 6 * pulse * scale);
+        ctx.fillStyle = b.neonColor;
+        if (Math.sin(game.time * 13 + b.worldZ) < 0.9) {
+          ctx.fillText(b.signText, bx + bw / 2, by - 4 * scale);
+        }
+        ctx.restore(); // clears shadowBlur completely
+      }
+
+      // Palm tree
+      if (b.hasPalm && scale > 0.08) {
+        const palmX = b.side < 0 ? bx + bw + 6 * scale : bx - 6 * scale;
+        drawPalmTree(ctx, palmX, screenY, scale, game.time);
+      }
+
+      // Street lamp between some buildings
+      if (!b.hasPalm && scale > 0.15 && Math.floor(b.worldZ) % 7 === 0) {
+        const lampX = b.side < 0 ? vanishX - rw - 3 * scale : vanishX + rw + 3 * scale;
+        const lampH = 40 * scale;
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = Math.max(1, 2 * scale);
+        ctx.beginPath();
+        ctx.moveTo(lampX, screenY);
+        ctx.lineTo(lampX, screenY - lampH);
+        ctx.stroke();
+        // Lamp glow
+        ctx.save();
+        ctx.shadowColor = '#ffdd88';
+        ctx.shadowBlur = Math.min(10, 8 * scale);
+        ctx.fillStyle = '#ffdd88';
+        ctx.beginPath();
+        ctx.arc(lampX, screenY - lampH, Math.max(1, 2 * scale), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Light pool on ground
+        ctx.fillStyle = 'rgba(255, 220, 130, 0.04)';
+        ctx.beginPath();
+        ctx.ellipse(lampX, screenY, 15 * scale, 4 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // ---- WORLD OBJECTS (obstacles, drinks, powerups) ----
+  if (game) {
+    const worldObjects = [];
+
+    game.obstacles.forEach(o => {
+      const relZ = o.worldZ - game.camera.z;
+      if (relZ > 0.5 && relZ < VIEW_DISTANCE) worldObjects.push({ kind: 'obstacle', data: o, relZ });
+    });
+    game.drinks.forEach(d => {
+      const relZ = d.worldZ - game.camera.z;
+      if (relZ > 0.5 && relZ < VIEW_DISTANCE) worldObjects.push({ kind: 'drink', data: d, relZ });
+    });
+    game.powerups.forEach(p => {
+      const relZ = p.worldZ - game.camera.z;
+      if (relZ > 0.5 && relZ < VIEW_DISTANCE) worldObjects.push({ kind: 'powerup', data: p, relZ });
+    });
+
+    // Sort far to near
+    worldObjects.sort((a, b) => b.relZ - a.relZ);
+
+    for (const obj of worldObjects) {
+      // Use same projection as road
+      const t = 1 - (obj.relZ - 1) / (VIEW_DISTANCE - 1);
+      if (t <= 0 || t > 1) continue;
+      const scale = t;
+      const screenY = horizonY + (H - horizonY) * t;
+      const rw = roadHW * scale;
+      const sx = vanishX + obj.data.worldX * rw / 0.7;
+      const sz = scale * 180; // size for drawing (bigger when closer)
+
+      if (sz < 3) continue;
+
+      if (obj.kind === 'obstacle') {
+        drawObstacle(ctx, obj.data, sx, screenY, sz, game.time);
+      } else if (obj.kind === 'drink') {
+        drawDrink(ctx, obj.data, sx, screenY, sz, game.time);
+      } else {
+        drawPowerup(ctx, obj.data, sx, screenY, sz, game.time);
+      }
+    }
+  }
+
+  // ---- PLAYER ----
+  if (game && game.state === 'playing') {
+    const playerT = 0.88; // matches PLAYER_Z
+    const playerScale = playerT;
+    const playerY = horizonY + (H - horizonY) * playerT;
+    const playerRW = roadHW * playerScale;
+    const playerSX = vanishX + game.player.worldX * playerRW / 0.7;
+    drawPlayer(ctx, playerSX, playerY, playerScale * 180, game.time, drunkRatio);
+  }
+
+  // ---- PARTICLES ----
+  if (game) {
+    for (const p of game.particles) {
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- DRUNK EFFECTS ----
+  if (game && drunkRatio > 0.2) {
+    const vigRadius = Math.min(W, H) * (0.8 - drunkRatio * 0.3);
+    const vigGrad = ctx.createRadialGradient(W / 2, H / 2, vigRadius * 0.5, W / 2, H / 2, vigRadius);
+    vigGrad.addColorStop(0, 'transparent');
+    vigGrad.addColorStop(1, `rgba(0, 0, 0, ${drunkRatio * 0.6})`);
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (game && drunkRatio > 0.5) {
+    ctx.fillStyle = `rgba(80, 0, 120, ${(drunkRatio - 0.5) * 0.15})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Screen flash
+  if (game && game.flash.active) {
+    ctx.globalAlpha = game.flash.alpha;
+    ctx.fillStyle = game.flash.color;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
+
+  // Combo display
+  if (game && game.combo >= 5) {
+    ctx.font = '20px "Russo One", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#ffcc00';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillText(`x${game.combo} COMBO`, W / 2, H - 80);
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.restore();
+}
+
+// ============================================================
+// DRAW HELPERS
+// ============================================================
+function drawPalmTree(ctx, x, baseY, scale, time) {
+  const h = 60 * scale;
+  if (h < 4) return;
+  ctx.strokeStyle = '#5c3d2e';
+  ctx.lineWidth = Math.max(1, 3 * scale);
+  ctx.beginPath();
+  ctx.moveTo(x, baseY);
+  ctx.quadraticCurveTo(x + 3 * scale, baseY - h * 0.6, x + 1 * scale, baseY - h);
+  ctx.stroke();
+
+  const topX = x + 1 * scale, topY = baseY - h;
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + Math.sin(time * 1.2) * 0.08;
+    const len = 18 * scale;
+    ctx.strokeStyle = '#228B22';
+    ctx.lineWidth = Math.max(1, 1.5 * scale);
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    const ex = topX + Math.cos(angle) * len;
+    const ey = topY + Math.sin(angle) * len * 0.4 + len * 0.15;
+    ctx.quadraticCurveTo(topX + Math.cos(angle) * len * 0.6, topY + Math.sin(angle) * len * 0.15, ex, ey);
+    ctx.stroke();
+  }
+}
+
+function drawPlayer(ctx, sx, sy, s, time, drunkRatio) {
+  if (s < 5) return;
+  const bob = Math.sin(game.player.bobble) * s * 0.03;
+  ctx.save();
+  if (drunkRatio > 0.4) {
+    ctx.translate(sx, sy);
+    ctx.rotate(Math.sin(time * 2) * drunkRatio * 0.12);
+    ctx.translate(-sx, -sy);
+  }
+
+  // Shadow
+  ctx.fillStyle = '#00000050';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 2, s * 0.15, s * 0.04, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  const legSwing = Math.sin(game.player.bobble) * s * 0.06;
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = Math.max(2, s * 0.05);
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.04, sy - s * 0.12 + bob);
+  ctx.lineTo(sx - s * 0.05 + legSwing, sy);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx + s * 0.04, sy - s * 0.12 + bob);
+  ctx.lineTo(sx + s * 0.05 - legSwing, sy);
+  ctx.stroke();
+
+  // Hawaiian shirt body
+  ctx.fillStyle = '#ff6633';
+  const bodyW = s * 0.18, bodyH = s * 0.17;
+  ctx.fillRect(sx - bodyW / 2, sy - s * 0.3 + bob, bodyW, bodyH);
+  // Shirt flowers
+  ctx.fillStyle = '#ffcc00';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(sx - s * 0.04 + i * s * 0.04, sy - s * 0.24 + bob, s * 0.012, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Arms
+  const armSwing = Math.sin(game.player.bobble + 0.5) * s * 0.05;
+  ctx.strokeStyle = '#FFDAB9';
+  ctx.lineWidth = Math.max(2, s * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(sx - bodyW / 2, sy - s * 0.26 + bob);
+  ctx.lineTo(sx - bodyW / 2 - s * 0.05 - armSwing, sy - s * 0.15 + bob);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(sx + bodyW / 2, sy - s * 0.26 + bob);
+  ctx.lineTo(sx + bodyW / 2 + s * 0.05 + armSwing, sy - s * 0.15 + bob);
+  ctx.stroke();
+
+  // Head
+  ctx.fillStyle = '#FFDAB9';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.37 + bob, s * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cap
+  ctx.fillStyle = '#cc0000';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.39 + bob, s * 0.06, Math.PI, 0);
+  ctx.fill();
+  ctx.fillRect(sx, sy - s * 0.41 + bob, s * 0.07, s * 0.015);
+
+  ctx.restore();
+}
+
+function drawObstacle(ctx, ob, sx, sy, s, time) {
+  // Shadow
+  ctx.fillStyle = '#00000030';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 2, s * 0.12, s * 0.03, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  switch (ob.type) {
+    case 'showgirl': drawShowgirl(ctx, sx, sy, s, time); break;
+    case 'costumed': drawCostumed(ctx, sx, sy, s, time, ob.costumeColor); break;
+    case 'flyerGuy': drawFlyerGuy(ctx, sx, sy, s, time); break;
+    case 'beggar': drawBeggar(ctx, sx, sy, s, time); break;
+    case 'performer': drawPerformer(ctx, sx, sy, s, time); break;
+    case 'drunkTourist': drawDrunkTourist(ctx, sx, sy, s, time); break;
+  }
+}
+
+function drawShowgirl(ctx, sx, sy, s, time) {
+  // High heels / legs
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = Math.max(1, s * 0.035);
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.05, sy);
+  ctx.lineTo(sx - s * 0.025, sy - s * 0.25);
+  ctx.moveTo(sx + s * 0.05, sy);
+  ctx.lineTo(sx + s * 0.025, sy - s * 0.25);
+  ctx.stroke();
+
+  // Sparkly dress (pink trapezoid)
+  ctx.fillStyle = '#FF1493';
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.1, sy - s * 0.25);
+  ctx.lineTo(sx + s * 0.1, sy - s * 0.25);
+  ctx.lineTo(sx + s * 0.06, sy - s * 0.5);
+  ctx.lineTo(sx - s * 0.06, sy - s * 0.5);
+  ctx.closePath();
+  ctx.fill();
+
+  // Sparkles
+  ctx.fillStyle = '#FFD700';
+  for (let i = 0; i < 5; i++) {
+    const spX = sx + Math.sin(time * 4 + i * 1.3) * s * 0.06;
+    const spY = sy - s * 0.28 - i * s * 0.04;
+    ctx.beginPath();
+    ctx.arc(spX, spY, Math.max(1, s * 0.01), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Head
+  ctx.fillStyle = '#FFDAB9';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.56, s * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Feather headdress (big and colorful!)
+  const colors = ['#FF1493', '#FFD700', '#00CED1', '#FF6347', '#9400D3', '#00FF7F'];
+  for (let i = -4; i <= 4; i++) {
+    const angle = -Math.PI / 2 + i * 0.18;
+    const len = s * 0.16 + Math.sin(time * 2.5 + i) * s * 0.015;
+    ctx.strokeStyle = colors[Math.abs(i) % colors.length];
+    ctx.lineWidth = Math.max(1, s * 0.015);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - s * 0.6);
+    ctx.lineTo(sx + Math.cos(angle) * len, sy - s * 0.6 + Math.sin(angle) * len);
+    ctx.stroke();
+    // Feather tip dot
+    ctx.fillStyle = colors[Math.abs(i) % colors.length];
+    ctx.beginPath();
+    ctx.arc(sx + Math.cos(angle) * len, sy - s * 0.6 + Math.sin(angle) * len, Math.max(1, s * 0.008), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCostumed(ctx, sx, sy, s, time, color) {
+  // Big blocky body
+  const bw = s * 0.25, bh = s * 0.35;
+  ctx.fillStyle = color;
+  ctx.fillRect(sx - bw / 2, sy - bh - s * 0.05, bw, bh);
+
+  // Shoulder armor
+  ctx.beginPath();
+  ctx.moveTo(sx - bw / 2, sy - bh - s * 0.05);
+  ctx.lineTo(sx - bw / 2 - s * 0.06, sy - bh + s * 0.05);
+  ctx.lineTo(sx - bw / 2, sy - bh + s * 0.12);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(sx + bw / 2, sy - bh - s * 0.05);
+  ctx.lineTo(sx + bw / 2 + s * 0.06, sy - bh + s * 0.05);
+  ctx.lineTo(sx + bw / 2, sy - bh + s * 0.12);
+  ctx.fill();
+
+  // Head (helmet)
+  ctx.fillStyle = '#555';
+  const headH = s * 0.1;
+  ctx.fillRect(sx - s * 0.06, sy - bh - s * 0.05 - headH, s * 0.12, headH);
+
+  // Glowing eyes
+  ctx.fillStyle = '#00ffff';
+  ctx.shadowColor = '#00ffff';
+  ctx.shadowBlur = 5;
+  ctx.fillRect(sx - s * 0.04, sy - bh - s * 0.1, s * 0.02, s * 0.02);
+  ctx.fillRect(sx + s * 0.02, sy - bh - s * 0.1, s * 0.02, s * 0.02);
+  ctx.shadowBlur = 0;
+
+  // Legs
+  ctx.fillStyle = color;
+  ctx.fillRect(sx - s * 0.08, sy - s * 0.05, s * 0.06, s * 0.05);
+  ctx.fillRect(sx + s * 0.02, sy - s * 0.05, s * 0.06, s * 0.05);
+}
+
+function drawFlyerGuy(ctx, sx, sy, s, time) {
+  // Dark body
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(sx - s * 0.04, sy - s * 0.35, s * 0.08, s * 0.25);
+
+  // Head
+  ctx.fillStyle = '#8B7355';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.4, s * 0.04, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sunglasses
+  ctx.fillStyle = '#000';
+  ctx.fillRect(sx - s * 0.035, sy - s * 0.41, s * 0.03, s * 0.012);
+  ctx.fillRect(sx + s * 0.005, sy - s * 0.41, s * 0.03, s * 0.012);
+
+  // Extended arm with FLYER
+  ctx.strokeStyle = '#8B7355';
+  ctx.lineWidth = Math.max(1, s * 0.025);
+  ctx.beginPath();
+  ctx.moveTo(sx + s * 0.04, sy - s * 0.28);
+  ctx.lineTo(sx + s * 0.18, sy - s * 0.32);
+  ctx.stroke();
+
+  // Flyer card (bright pink, pulsing)
+  const pulse = 0.7 + Math.sin(time * 6) * 0.3;
+  ctx.fillStyle = `rgba(255, 0, 128, ${pulse})`;
+  ctx.shadowColor = '#ff0080';
+  ctx.shadowBlur = 8;
+  ctx.fillRect(sx + s * 0.15, sy - s * 0.37, s * 0.07, s * 0.1);
+  ctx.shadowBlur = 0;
+  // Text on flyer
+  if (s > 30) {
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.max(5, s * 0.025)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('HOT', sx + s * 0.185, sy - s * 0.3);
+  }
+
+  // Legs
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = Math.max(1, s * 0.025);
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.02, sy - s * 0.1);
+  ctx.lineTo(sx - s * 0.03, sy);
+  ctx.moveTo(sx + s * 0.02, sy - s * 0.1);
+  ctx.lineTo(sx + s * 0.03, sy);
+  ctx.stroke();
+}
+
+function drawBeggar(ctx, sx, sy, s, time) {
+  // Blanket
+  ctx.fillStyle = '#3a3a2a';
+  ctx.fillRect(sx - s * 0.12, sy - s * 0.04, s * 0.24, s * 0.05);
+
+  // Seated hunched body
+  ctx.fillStyle = '#555544';
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.06, sy - s * 0.04);
+  ctx.lineTo(sx + s * 0.06, sy - s * 0.04);
+  ctx.lineTo(sx + s * 0.04, sy - s * 0.18);
+  ctx.lineTo(sx - s * 0.04, sy - s * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#8B7355';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.22, s * 0.035, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beanie
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.24, s * 0.035, Math.PI, 0);
+  ctx.fill();
+
+  // Cup
+  ctx.fillStyle = '#aaa';
+  ctx.fillRect(sx + s * 0.08, sy - s * 0.1, s * 0.03, s * 0.05);
+
+  // Cardboard sign
+  ctx.fillStyle = '#8B7355';
+  ctx.fillRect(sx - s * 0.15, sy - s * 0.16, s * 0.07, s * 0.1);
+  if (s > 25) {
+    ctx.fillStyle = '#333';
+    ctx.font = `${Math.max(4, s * 0.02)}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText('HELP', sx - s * 0.115, sy - s * 0.1);
+  }
+}
+
+function drawPerformer(ctx, sx, sy, s, time) {
+  // Body (purple vest)
+  ctx.fillStyle = '#4a0080';
+  ctx.fillRect(sx - s * 0.05, sy - s * 0.35, s * 0.1, s * 0.2);
+
+  // Head
+  ctx.fillStyle = '#FFDAB9';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.4, s * 0.04, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Fedora
+  ctx.fillStyle = '#222';
+  ctx.fillRect(sx - s * 0.06, sy - s * 0.44, s * 0.12, s * 0.015);
+  ctx.fillRect(sx - s * 0.035, sy - s * 0.48, s * 0.07, s * 0.04);
+
+  // Guitar
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(sx + s * 0.05, sy - s * 0.32, s * 0.025, s * 0.18);
+  ctx.beginPath();
+  ctx.ellipse(sx + s * 0.063, sy - s * 0.14, s * 0.04, s * 0.03, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Guitar strings
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(sx + s * 0.058, sy - s * 0.32);
+  ctx.lineTo(sx + s * 0.058, sy - s * 0.14);
+  ctx.moveTo(sx + s * 0.068, sy - s * 0.32);
+  ctx.lineTo(sx + s * 0.068, sy - s * 0.14);
+  ctx.stroke();
+
+  // Juggling balls (orbiting above)
+  for (let i = 0; i < 3; i++) {
+    const angle = time * 3 + i * (Math.PI * 2 / 3);
+    const jx = sx + Math.cos(angle) * s * 0.1;
+    const jy = sy - s * 0.5 + Math.sin(angle) * s * 0.04;
+    ctx.fillStyle = ['#ff3333', '#33ff33', '#ffff33'][i];
+    ctx.beginPath();
+    ctx.arc(jx, jy, Math.max(1.5, s * 0.018), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Tip jar
+  ctx.fillStyle = '#888';
+  ctx.fillRect(sx - s * 0.09, sy - s * 0.03, s * 0.04, s * 0.03);
+
+  // Legs
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = Math.max(1, s * 0.025);
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.02, sy - s * 0.15);
+  ctx.lineTo(sx - s * 0.03, sy);
+  ctx.moveTo(sx + s * 0.02, sy - s * 0.15);
+  ctx.lineTo(sx + s * 0.03, sy);
+  ctx.stroke();
+}
+
+function drawDrunkTourist(ctx, sx, sy, s, time) {
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(Math.sin(time * 3) * 0.2);
+  ctx.translate(-sx, -sy);
+
+  // Loud shirt body
+  ctx.fillStyle = '#00cc88';
+  ctx.fillRect(sx - s * 0.06, sy - s * 0.33, s * 0.12, s * 0.2);
+  // Pattern
+  ctx.fillStyle = '#ffff00';
+  ctx.beginPath();
+  ctx.arc(sx - s * 0.02, sy - s * 0.26, s * 0.01, 0, Math.PI * 2);
+  ctx.arc(sx + s * 0.03, sy - s * 0.22, s * 0.01, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = '#FFB6A0';
+  ctx.beginPath();
+  ctx.arc(sx, sy - s * 0.39, s * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sunglasses
+  ctx.fillStyle = '#111';
+  ctx.fillRect(sx - s * 0.04, sy - s * 0.4, s * 0.03, s * 0.015);
+  ctx.fillRect(sx + s * 0.01, sy - s * 0.4, s * 0.03, s * 0.015);
+
+  // Drink in hand
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(sx + s * 0.08, sy - s * 0.28, s * 0.025, s * 0.07);
+
+  // Stumbling legs
+  const stumble = Math.sin(time * 4) * s * 0.04;
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = Math.max(1, s * 0.03);
+  ctx.beginPath();
+  ctx.moveTo(sx - s * 0.03, sy - s * 0.13);
+  ctx.lineTo(sx - s * 0.05 + stumble, sy);
+  ctx.moveTo(sx + s * 0.03, sy - s * 0.13);
+  ctx.lineTo(sx + s * 0.05 - stumble, sy);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawDrink(ctx, d, sx, sy, s, time) {
+  const bob = Math.sin(d.bobble) * s * 0.04;
+  const gs = s * 0.1; // glass size
+
+  // Glow
+  ctx.shadowColor = d.color;
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = d.color;
+
+  switch (d.glassType) {
+    case 'cocktail':
+      ctx.beginPath();
+      ctx.moveTo(sx - gs, sy - gs * 0.5 + bob);
+      ctx.lineTo(sx + gs, sy - gs * 0.5 + bob);
+      ctx.lineTo(sx, sy + gs + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + gs + bob);
+      ctx.lineTo(sx, sy + gs * 1.6 + bob);
+      ctx.stroke();
+      ctx.fillRect(sx - gs * 0.4, sy + gs * 1.5 + bob, gs * 0.8, gs * 0.15);
+      break;
+    case 'pint':
+      ctx.fillRect(sx - gs * 0.6, sy - gs * 0.8 + bob, gs * 1.2, gs * 1.8);
+      ctx.fillStyle = '#fffde0';
+      ctx.fillRect(sx - gs * 0.6, sy - gs * 0.8 + bob, gs * 1.2, gs * 0.35);
+      break;
+    case 'wine':
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - gs * 0.2 + bob, gs * 0.6, gs * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + gs * 0.6 + bob);
+      ctx.lineTo(sx, sy + gs * 1.4 + bob);
+      ctx.stroke();
+      ctx.fillStyle = '#ccc';
+      ctx.fillRect(sx - gs * 0.3, sy + gs * 1.3 + bob, gs * 0.6, gs * 0.12);
+      break;
+    case 'shot':
+      ctx.fillRect(sx - gs * 0.35, sy - gs * 0.2 + bob, gs * 0.7, gs * 0.9);
+      break;
+    case 'rocks':
+      ctx.fillRect(sx - gs * 0.5, sy - gs * 0.4 + bob, gs * 1, gs * 1.1);
+      ctx.fillStyle = '#ffffff30';
+      ctx.fillRect(sx - gs * 0.15, sy - gs * 0.25 + bob, gs * 0.3, gs * 0.25);
+      break;
+    case 'tall':
+      ctx.fillRect(sx - gs * 0.4, sy - gs * 1 + bob, gs * 0.8, gs * 2);
+      break;
+    case 'flute':
+      ctx.fillRect(sx - gs * 0.25, sy - gs * 1.2 + bob, gs * 0.5, gs * 1.8);
+      ctx.fillStyle = '#ffffff50';
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(sx + (Math.random() - 0.5) * gs * 0.2, sy - gs * 0.3 + bob - i * gs * 0.25, Math.max(1, gs * 0.06), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+  }
+  ctx.shadowBlur = 0;
+
+  // Name label
+  if (s > 25) {
+    ctx.font = `${Math.max(6, Math.floor(s * 0.055))}px 'Press Start 2P', monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = d.color;
+    ctx.shadowBlur = 6;
+    ctx.fillText(d.name, sx, sy + gs * 2.2 + bob);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawPowerup(ctx, p, sx, sy, s, time) {
+  const bob = Math.sin(p.bobble) * s * 0.04;
+  const r = s * 0.1;
+
+  // Glow ring
+  ctx.strokeStyle = p.color + '60';
+  ctx.lineWidth = Math.max(1, s * 0.015);
+  ctx.beginPath();
+  ctx.arc(sx, sy + bob, r + Math.sin(time * 4) * r * 0.15, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Emoji
+  const fontSize = Math.max(12, Math.floor(s * 0.18));
+  ctx.font = `${fontSize}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = p.color;
+  ctx.shadowBlur = 10;
+  ctx.fillText(p.emoji, sx, sy + bob + fontSize * 0.3);
+  ctx.shadowBlur = 0;
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let lastTime = 0;
+
+function gameLoop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  if (game && game.state === 'playing') update(dt);
+  if (game) draw();
+
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'none';
+  game = createGame();
+  lastTime = performance.now();
+  if (!animFrame) animFrame = requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (!keys[e.code]) keysJustPressed[e.code] = true;
+  keys[e.code] = true;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+}, { passive: false });
+</script>
+</body>
+</html>
