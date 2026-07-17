@@ -338,6 +338,7 @@
     border: 1px solid rgba(255,255,255,.3); box-shadow: none;
   }
   .rule.r-slots { border-color: rgba(255,194,51,.4); } .rule.r-slots h3 { color: var(--neon-gold); }
+  .rule.r-ride  { border-color: rgba(255,143,61,.4); } .rule.r-ride h3 { color: #ff8f3d; }
 
   @media (prefers-reduced-motion: reduce) {
     .title { animation: none; }
@@ -416,7 +417,7 @@
 <div class="screen" id="start-screen">
   <div class="eyebrow">MANDALAY BAY ➜ THE STRAT</div>
   <div class="title">VEGAS STRIP<br><span class="alt">SURVIVOR</span></div>
-  <div class="sub">Walk the whole Strip before last call. Stay upright. Stay hydrated.</div>
+  <div class="sub">Walk the whole Strip before last call. Stay upright. Stay hydrated. Make it to The Strat and the night starts over — faster.</div>
   <div class="sub" id="best-line" style="color: var(--neon-gold); font-size: 15px;"></div>
   <div class="rules">
     <div class="rule r-drink"><div class="ico">🍹</div><h3>DRINKS = POINTS + CASH</h3><p>Tap SPACE to grab. Points and comp dollars — but each one leaves you drunker and drier. Stay bone-sober too long and Vegas drains your score.</p></div>
@@ -425,6 +426,7 @@
     <div class="rule r-water"><div class="ico">💧</div><h3>WATER SAVES YOU</h3><p>It's the desert — hydration always drains. Grab bottles or buy them from carts.</p></div>
     <div class="rule r-slots"><div class="ico">🎰</div><h3>GAMBLE FOR CASH</h3><p>Slots outside every casino. Win big for water money — but the meters keep running.</p></div>
     <div class="rule r-sick"><div class="ico">🤢</div><h3>DON'T GET SICK</h3><p>Too drunk or too dry and you're sick: wobbly, slow, bleeding points. Max out either and it's over — and cops arrest hammered tourists on sight.</p></div>
+    <div class="rule r-ride"><div class="ico">🛹</div><h3>GRAB SOME WHEELS</h3><p>Skateboards and BMX bikes double your speed — but everything comes at you fast, and one hit is a wipeout. Watch for rental scooters flying down the sidewalk.</p></div>
   </div>
   <div class="controls"><b>↑</b>/<b>↓</b> or <b>W</b>/<b>S</b> change lane &nbsp;·&nbsp; <b>SPACE</b> grab / buy / play &nbsp;·&nbsp; <b>E</b> pee break &nbsp;·&nbsp; <b>→</b>/<b>D</b> sprint &nbsp;·&nbsp; <b>←</b>/<b>A</b> slow</div>
   <button class="btn" id="start-btn">START WALKING</button>
@@ -524,6 +526,12 @@ const HAZARDS = [   // each has a signature consequence (see collision switch)
   { id: 'tourist',  name: 'Drunk Tourist',    walk: 55,  w: 38 },   // shove + spill
   { id: 'robot',    name: 'Street Performer', walk: 0,   w: 34 },   // classic block
   { id: 'cop',      name: 'LVPD Officer',     walk: 38,  w: 36 },   // tickets public urination
+  { id: 'scooter',  name: 'Scooter Tourist',  walk: 195, w: 42 },   // flattens you; speed varies per spawn, half swerve
+];
+
+const RIDES = [   // grabbable wheels: huge speed, but hazards close fast and one hit is a wipeout
+  { id: 'skate', name: 'Skateboard', mult: 1.9, time: 9,   c: '#ff8f3d' },
+  { id: 'bike',  name: 'BMX Bike',   mult: 2.4, time: 6.5, c: '#3dff8f' },
 ];
 
 /* ---------- tiny synth ---------- */
@@ -641,6 +649,8 @@ function newGame() {
     combo: 1, bestCombo: 1,
     lastCall: 1000, lastCallWarned: false,
     runTime: 0,
+    lap: 1,
+    riding: 0, ride: null,
     cash: 50, slotNet: 0,
     sick: false,
     score: 0,
@@ -652,13 +662,19 @@ function newGame() {
     taxis: [],
     spawnCursor: 900,
     lastHazardRow: -1,
-    lastWaterX: 0, lastFoodX: 0,   // director bookkeeping
+    lastWaterX: 0, lastFoodX: 0, lastRideX: 0,   // director bookkeeping
     grabTarget: null,
     zoneIdx: -1,
     time: 0,
     shake: 0,
-    over: null,              // 'win' | 'blackout' | 'collapse' | 'arrested'
+    over: null,              // 'blackout' | 'collapse' | 'arrested' (no win — the Strip loops forever)
   };
+  buildStrip(g);
+  return g;
+}
+
+// pre-placed fixtures for one pass of the Strip (fresh each lap)
+function buildStrip(g) {
   // slot machines outside every casino (zone boundaries), against the buildings (row 0)
   const slotXs = [];
   for (let i = 1; i < ZONES.length; i++) {
@@ -680,7 +696,6 @@ function newGame() {
     vi++;
     vx += 2300 + (vi % 3) * 260;
   }
-  return g;
 }
 
 /* ---------- input ---------- */
@@ -806,7 +821,7 @@ function updateHUD() {
   $('prog-done').style.width = (game.x / TOTAL * 100) + '%';
   const zi = Math.min(ZONES.length - 1, Math.floor(game.x / ZONE_LEN));
   [...ticksEl.children].forEach((t, i) => t.classList.toggle('hit', i <= zi));
-  $('zone-now').textContent = ZONES[zi].name;
+  $('zone-now').textContent = ZONES[zi].name + (game.lap > 1 ? ` · LAP ${game.lap}` : '');
 }
 
 /* ---------- spawning (director: fairness over luck) ---------- */
@@ -831,10 +846,13 @@ function spawnAhead() {
     else if (foodGap > 2600) kind = 'food';
     const rescued = kind !== null;
 
+    if (!kind && cur - g.lastRideX > 3500 && Math.random() < 0.06) kind = 'ride';   // rare set of wheels
+
     if (!kind) {
       const r = Math.random();
       const zi = Math.min(ZONES.length - 1, Math.floor(cur / ZONE_LEN));
-      const hazardChance = Math.min(0.62, (0.34 + prog * 0.14) * ZONES[zi].haz);
+      const lapHeat = 1 + (g.lap - 1) * 0.15;   // later laps pack the sidewalk tighter
+      const hazardChance = Math.min(0.72, (0.34 + prog * 0.14) * ZONES[zi].haz * lapHeat);
       if (r < hazardChance) kind = 'hazard';
       else if (r < hazardChance + 0.38) kind = 'drink';
       else if (r < hazardChance + 0.52) kind = 'food';
@@ -845,16 +863,26 @@ function spawnAhead() {
       let row = Math.floor(Math.random() * 3);
       if (row === g.lastHazardRow) row = (row + 1 + Math.floor(Math.random() * 2)) % 3;
       g.lastHazardRow = row;
-      const type = Math.random() < 0.10 + prog * 0.12
-        ? HAZARDS[5]                                        // the law walks the Strip more later
-        : HAZARDS[Math.floor(Math.random() * 5)];
-      g.entities.push({ kind, type, row, worldX: cur, t: Math.random() * 10, dead: false });
+      const roll = Math.random();
+      const copChance = 0.10 + prog * 0.12;
+      const scooterChance = 0.12 + prog * 0.08 + (g.lap - 1) * 0.04;
+      const type = roll < copChance ? HAZARDS[5]            // the law walks the Strip more later
+                 : roll < copChance + scooterChance ? HAZARDS[6]   // rental scooters too
+                 : HAZARDS[Math.floor(Math.random() * 5)];
+      const ent = { kind, type, row, worldX: cur, t: Math.random() * 10, dead: false };
+      if (type.id === 'scooter') {
+        ent.spd = 0.8 + Math.random() * 0.55;               // no two scooters ride alike
+        ent.swerve = Math.random() < 0.5;                   // half of them drift into your row
+      }
+      g.entities.push(ent);
     } else {
       const row = Math.floor(Math.random() * 3);
       if (kind === 'water') g.lastWaterX = cur;
       if (kind === 'food') g.lastFoodX = cur;
+      if (kind === 'ride') g.lastRideX = cur;
       const type = kind === 'drink' ? DRINKS[Math.floor(Math.random() * DRINKS.length)]
                  : kind === 'food' ? FOODS[Math.floor(Math.random() * FOODS.length)]
+                 : kind === 'ride' ? RIDES[Math.floor(Math.random() * RIDES.length)]
                  : WATER;
       g.entities.push({ kind, type, row, worldX: cur, t: Math.random() * 10, dead: false });
       // director-placed rescues are sometimes guarded — the game guarantees
@@ -886,15 +914,26 @@ function update(dt) {
 
   // speed
   const prog = g.x / TOTAL;
+  const lapSpd = 1 + (g.lap - 1) * 0.2;   // every lap, the whole Strip runs hotter
   let mult = 1;
   if (keys['arrowright'] || keys['d']) mult = 1.65;
   if (keys['arrowleft'] || keys['a']) mult = 0.55;
+  // riding: you fly, but everything closes fast and one hit is a wipeout
+  if (g.riding > 0) {
+    g.riding -= dt;
+    mult = Math.max(mult, 1) * g.ride.mult;   // can't slow-roll on wheels
+    if (g.riding <= 0) {
+      const rp = ROWS[Math.round(g.rowY)];
+      popText(W * PLAYER_SCREEN_X, rp.yf * H - 130 * rp.s, `${g.ride.name.toUpperCase()} DITCHED — BACK ON FOOT`, g.ride.c);
+      g.ride = null;
+    }
+  }
   if (g.sick) mult *= 0.6;
   if (g.buzzkill) mult *= 0.85;
   if (g.bladder >= 85) mult *= 0.92;
   if (g.stagger > 0) mult *= 0.25;
   if (g.peeing > 0) mult = 0;
-  g.speed = (BASE_SPEED + prog * 40) * mult;
+  g.speed = (BASE_SPEED + prog * 40) * mult * lapSpd;
   g.x += g.speed * dt;
   if (g.peeing <= 0) g.walkPhase += dt * (5.4 + mult * 2.6);
 
@@ -1000,10 +1039,10 @@ function update(dt) {
   if (g.sick && !wasSick) sfx.sick();
   if (g.sick) g.score = Math.max(0, g.score - dt * 5);
 
-  // fail / win
+  // fail / lap rollover — the Strip never ends, it just gets faster
   if (g.drunk >= 100) return endGame('blackout');
   if (g.hyd <= 0) return endGame('collapse');
-  if (g.x >= TOTAL) return endGame('win');
+  if (g.x >= TOTAL) return nextLap();
 
   // timers
   g.stagger = Math.max(0, g.stagger - dt);
@@ -1031,13 +1070,17 @@ function update(dt) {
     e.t += dt;
     if (e.dead) continue;
     if (e.kind === 'hazard') {
-      let walk = e.type.walk * (1 + prog * 0.6);
+      let walk = e.type.walk * (1 + prog * 0.6) * lapSpd * (e.spd || 1);
       // a visibly hammered tourist attracts the law: cops speed up and cut into your lane
       if (e.type.id === 'cop' && g.drunk > 80) {
         walk *= 1.6;
         if (e.row !== g.row && Math.random() < dt * 1.2) {
           e.row += Math.sign(g.row - e.row);
         }
+      }
+      // swervy scooters drift toward your row — you can't just hold a lane on them
+      if (e.type.id === 'scooter' && e.swerve && e.row !== g.row && Math.random() < dt * 0.9) {
+        e.row += Math.sign(g.row - e.row);
       }
       e.worldX -= walk * dt;
       const dx = e.worldX - px;
@@ -1074,6 +1117,11 @@ function update(dt) {
             g.stagger = 0.45;
             popText(sxp, sy - 110 * rowDef.s, '-20  SHOVED — HE SPILLED ON YOU', '#2c9c74');
             break;
+          case 'scooter':
+            g.score = Math.max(0, g.score - 35);
+            g.stagger = 1.1;
+            popText(sxp, sy - 110 * rowDef.s, '-35  SCOOTER! FLATTENED', '#7fff5a');
+            break;
           case 'cop':
             if (g.drunk >= 60) {   // drunk & disorderly — night's over
               popText(sxp, sy - 110 * rowDef.s, '🚨 DRUNK & DISORDERLY 🚨', '#ff5c5c');
@@ -1090,6 +1138,14 @@ function update(dt) {
             g.drunk = Math.min(100, g.drunk + 12);
             g.stagger = 0.9;
             popText(sxp, sy - 110 * rowDef.s, '-40  FREE SHOT 🥃', '#ff5c5c');
+        }
+        // any hit at ride speed is a full wipeout on top of the usual damage
+        if (g.riding > 0) {
+          g.riding = 0; g.ride = null;
+          g.stagger = Math.max(g.stagger, 1.5);
+          g.score = Math.max(0, g.score - 25);
+          popText(sxp, sy - 145 * rowDef.s, '💥 WIPEOUT!  -25', '#ff5c5c');
+          burst(sxp, sy - 30 * rowDef.s, '#ffc233', 10);
         }
         burst(sxp, sy - 50 * rowDef.s, '#ff5c5c', 14);
         sfx.hit();
@@ -1132,6 +1188,7 @@ function startPee() {
     popText(W * PLAYER_SCREEN_X, rp.yf * H - 120 * rp.s, "DON'T NEED TO GO YET", '#8fd4ff');
     return;
   }
+  g.riding = 0; g.ride = null;   // can't do that on a bike
   g.peeing = PEE_TIME;
   g.peeTicketed = false;
   popText(W * PLAYER_SCREEN_X, rp.yf * H - 120 * rp.s, "PEE BREAK — DON'T GET CAUGHT", '#8fd4ff');
@@ -1176,7 +1233,14 @@ function tryGrab() {
   }
 
   e.dead = true;
-  if (e.kind === 'drink') {
+  if (e.kind === 'ride') {
+    const rt = e.type;
+    g.riding = rt.time;
+    g.ride = rt;
+    popText(sxp, sy - 110 * rowDef.s, `${rt.name.toUpperCase()}!  ×${rt.mult} SPEED — HOLD ON`, rt.c);
+    burst(sxp, sy - 60 * rowDef.s, rt.c, 14);
+    sfx.zone();
+  } else if (e.kind === 'drink') {
     const d = e.type;
     const tip = Math.max(5, Math.round(d.pts / 10));
     const pts = d.pts * g.combo;
@@ -1791,9 +1855,11 @@ function drawPlayer(sx, sy, scale, t) {
   if (g.invuln > 0 && Math.sin(t * 24) > 0) ctx.globalAlpha = 0.45;
 
   const wp = g.walkPhase;
+  const peeing = g.peeing > 0;
+  const riding = g.riding > 0 && !peeing;
   const drunkLean = Math.sin(t * 1.7) * (g.drunk / 100) * 0.22;
-  ctx.rotate(drunkLean + (g.stagger > 0 ? Math.sin(t * 20) * 0.18 : 0));
-  const bob = Math.abs(Math.sin(wp)) * 3.2;
+  ctx.rotate(drunkLean + (g.stagger > 0 ? Math.sin(t * 20) * 0.18 : 0) + (riding ? 0.09 : 0));
+  const bob = riding ? Math.abs(Math.sin(t * 16)) * 1.3 : Math.abs(Math.sin(wp)) * 3.2;
   ctx.translate(0, -bob);
 
   // shadow
@@ -1804,7 +1870,6 @@ function drawPlayer(sx, sy, scale, t) {
   ctx.restore();
 
   const SKIN = '#e8b48c', PANTS = '#20304c', SHIRT = '#c22850', SHOE = '#181420';
-  const peeing = g.peeing > 0;
 
   if (peeing) {
     // relief stance: planted feet, slight lean back, hands front
@@ -1816,6 +1881,17 @@ function drawPlayer(sx, sy, scale, t) {
     ctx.fillStyle = SHOE;
     ctx.beginPath(); ctx.ellipse(-4, -2, 9, 4.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(14, -2, 9, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (riding) {
+    drawPlayerRide(g.ride, t);
+    // crouched stance, feet planted on the deck/pedals
+    const fh = g.ride.id === 'bike' ? 15 : 11;
+    limb(0, -46, -9, -28, 10, '#182540');
+    limb(-9, -28, -8, -fh, 9, '#182540');
+    limb(0, -46, 10, -30, 10, PANTS);
+    limb(10, -30, 9, -fh, 9, PANTS);
+    ctx.fillStyle = SHOE;
+    ctx.beginPath(); ctx.ellipse(-4, -fh - 1, 9, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(13, -fh - 1, 9, 4.5, 0, 0, Math.PI * 2); ctx.fill();
   } else {
     // back leg + front leg
     for (const ph of [wp + Math.PI, wp]) {
@@ -1846,6 +1922,18 @@ function drawPlayer(sx, sy, scale, t) {
     // both hands front and low
     limb(0, -73, 9, -62, 7, SHIRT);
     limb(9, -62, 11, -52, 6, SKIN);
+  } else if (riding) {
+    if (g.ride.id === 'bike') {
+      // reaching forward to the bars
+      limb(0, -73, 13, -58, 7, SHIRT);
+      limb(13, -58, 22, -40, 6, SKIN);
+    } else {
+      // arms out for balance
+      limb(0, -73, -12, -64, 7, SHIRT);
+      limb(-12, -64, -19, -60, 6, SKIN);
+      limb(0, -73, 12, -64, 7, SHIRT);
+      limb(12, -64, 19, -60, 6, SKIN);
+    }
   } else {
     // arms swing opposite the legs
     for (const ph of [wp, wp + Math.PI]) {
@@ -1873,6 +1961,43 @@ function drawPlayer(sx, sy, scale, t) {
   ctx.restore();
 }
 
+// the ride under the player's feet (player local coords, ground at y=0)
+function drawPlayerRide(rt, t) {
+  ctx.save();
+  ctx.shadowColor = rt.c; ctx.shadowBlur = 10;
+  if (rt.id === 'skate') {
+    ctx.strokeStyle = rt.c; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-18, -9); ctx.lineTo(22, -9); ctx.stroke();
+    ctx.fillStyle = '#f0e8d0';
+    for (const wx of [-10, 16]) {
+      ctx.beginPath(); ctx.arc(wx, -4, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    ctx.strokeStyle = rt.c; ctx.lineWidth = 3;
+    for (const wx of [-16, 20]) {
+      ctx.beginPath(); ctx.arc(wx, -10, 11, 0, Math.PI * 2); ctx.stroke();
+      const a = t * 14;   // spinning spoke
+      ctx.beginPath();
+      ctx.moveTo(wx - Math.cos(a) * 9, -10 - Math.sin(a) * 9);
+      ctx.lineTo(wx + Math.cos(a) * 9, -10 + Math.sin(a) * 9);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(-16, -10); ctx.lineTo(-2, -23); ctx.lineTo(13, -23); ctx.lineTo(20, -10);
+    ctx.moveTo(13, -23); ctx.lineTo(19, -36);
+    ctx.stroke();
+    ctx.strokeStyle = '#f0e8d0'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(15, -38); ctx.lineTo(25, -38); ctx.stroke();
+  }
+  // speed lines trailing behind
+  ctx.strokeStyle = rt.c + '88'; ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    const yy = -18 - i * 24, ph = (t * 6 + i * 0.37) % 1;
+    ctx.beginPath(); ctx.moveTo(-28 - ph * 18, yy); ctx.lineTo(-46 - ph * 18, yy); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /* --- hazards (drawn facing left = toward player) --- */
 function drawHazard(e, sx, sy, scale, t) {
   ctx.save();
@@ -1894,6 +2019,7 @@ function drawHazard(e, sx, sy, scale, t) {
     case 'tourist': drawTourist(wp, t); break;
     case 'robot': drawRobot(e.t); break;
     case 'cop': drawCop(wp, t); break;
+    case 'scooter': drawScooterRider(wp, t); break;
   }
   ctx.restore();
 
@@ -1955,6 +2081,58 @@ function drawCop(wp, t) {
   // stern mouth
   ctx.strokeStyle = '#8a5c3c'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(6, -77); ctx.lineTo(11, -77); ctx.stroke();
+}
+
+function drawScooterRider(wp, t) {
+  const SKIN = '#d89a6a';
+  ctx.rotate(-0.08 + Math.sin(t * 9) * 0.03);   // forward lean + speed wobble
+  // rental scooter: deck, stem, bars
+  ctx.save();
+  ctx.shadowColor = '#7fff5a'; ctx.shadowBlur = 8;
+  ctx.strokeStyle = '#7fff5a'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-16, -10); ctx.lineTo(14, -10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, -10); ctx.lineTo(24, -58); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(17, -58); ctx.lineTo(31, -58); ctx.stroke();
+  ctx.restore();
+  // wheels with a spinning spoke
+  for (const wx of [-16, 21]) {
+    ctx.fillStyle = '#101018';
+    ctx.beginPath(); ctx.arc(wx, -5, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#8fd4ff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(wx, -5);
+    ctx.lineTo(wx + Math.cos(wp * 2.4) * 5, -5 + Math.sin(wp * 2.4) * 5); ctx.stroke();
+  }
+  // legs planted on the deck
+  limb(0, -44, -8, -26, 9, '#d8c890');
+  limb(-8, -26, -7, -13, 8, '#d8c890');
+  limb(0, -44, 8, -28, 9, '#e8d9a0');
+  limb(8, -28, 7, -13, 8, '#e8d9a0');
+  ctx.fillStyle = '#f0f0f0';
+  ctx.beginPath(); ctx.ellipse(-4, -13, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(10, -13, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // tank-top torso leaning into it
+  ctx.fillStyle = '#45c8ff';
+  ctx.beginPath();
+  ctx.moveTo(-10, -44); ctx.quadraticCurveTo(-10, -62, -3, -74);
+  ctx.lineTo(14, -70); ctx.quadraticCurveTo(14, -56, 10, -44);
+  ctx.fill();
+  // arm to the bars
+  limb(4, -68, 15, -62, 6, '#45c8ff');
+  limb(15, -62, 23, -57, 5, SKIN);
+  // head, backwards cap, shades
+  ctx.fillStyle = SKIN;
+  ctx.beginPath(); ctx.arc(10, -82, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff5c5c';
+  ctx.beginPath(); ctx.arc(9, -86, 10, Math.PI, 0); ctx.fill();
+  ctx.fillRect(-4, -87, 7, 4);
+  ctx.fillStyle = '#101018';
+  ctx.fillRect(11, -85, 10, 4);
+  // speed lines trailing behind
+  ctx.strokeStyle = 'rgba(127,255,90,0.5)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 3; i++) {
+    const yy = -22 - i * 20, ph = (t * 7 + i * 0.4) % 1;
+    ctx.beginPath(); ctx.moveTo(-26 - ph * 14, yy); ctx.lineTo(-42 - ph * 14, yy); ctx.stroke();
+  }
 }
 
 function walkLegs(wp, pantsC, shoeC) {
@@ -2176,7 +2354,7 @@ function drawCollectible(e, sx, sy, scale, t) {
   ctx.scale(scale, scale);
 
   // glow ring
-  const c = e.kind === 'drink' ? e.type.c : e.kind === 'food' ? '#ffb066' : '#45c8ff';
+  const c = e.kind === 'drink' ? e.type.c : e.kind === 'food' ? '#ffb066' : e.kind === 'ride' ? e.type.c : '#45c8ff';
   ctx.save();
   ctx.shadowColor = c; ctx.shadowBlur = 18;
   ctx.strokeStyle = c + '55';
@@ -2188,6 +2366,7 @@ function drawCollectible(e, sx, sy, scale, t) {
   ctx.shadowColor = c; ctx.shadowBlur = 10;
   if (e.kind === 'drink') drawGlass(e.type);
   else if (e.kind === 'food') drawFood(e.type);
+  else if (e.kind === 'ride') drawRidePickup(e.type);
   else drawWaterBottle();
   ctx.restore();
 
@@ -2196,6 +2375,32 @@ function drawCollectible(e, sx, sy, scale, t) {
   ctx.fillStyle = '#000';
   ctx.beginPath(); ctx.ellipse(0, 46 - bob, 13, 3.6, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+}
+
+// grabbable wheels, floating like every other pickup
+function drawRidePickup(rt) {
+  if (rt.id === 'skate') {
+    ctx.strokeStyle = rt.c; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-20, -8); ctx.quadraticCurveTo(0, -14, 20, -8); ctx.stroke();
+    ctx.fillStyle = '#f0e8d0';
+    for (const wx of [-11, 11]) {
+      ctx.beginPath(); ctx.arc(wx, -2, 4.5, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    ctx.strokeStyle = rt.c; ctx.lineWidth = 2.5;
+    for (const wx of [-14, 14]) {
+      ctx.beginPath(); ctx.arc(wx, 2, 10, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(-14, 2); ctx.lineTo(-4, -12); ctx.lineTo(10, -12); ctx.lineTo(14, 2);
+    ctx.moveTo(-4, -12); ctx.lineTo(-14, 2);
+    ctx.moveTo(-4, -12); ctx.lineTo(-6, -19);
+    ctx.moveTo(10, -12); ctx.lineTo(13, -21);
+    ctx.stroke();
+    ctx.strokeStyle = '#f0e8d0'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-10, -20); ctx.lineTo(-3, -20); ctx.stroke();   // seat
+    ctx.beginPath(); ctx.moveTo(9, -23); ctx.lineTo(18, -23); ctx.stroke();     // bars
+  }
 }
 
 function drawGlass(d) {
@@ -2370,7 +2575,16 @@ function drawEntitiesAndPlayer(camX, t) {
       if (g.cash >= e.price) text = `SPACE · $${e.price}`;
       else { text = `NEED $${e.price}`; bad = true; }
     } else if (e.kind === 'slot') text = 'SPACE · PLAY';
+    else if (e.kind === 'ride') text = 'SPACE · RIDE';
     drawPrompt(sx, r.yf * H - (tall ? 168 : 112) * r.s, text, bad, t);
+  }
+
+  // ride timer over the player's head
+  if (g.riding > 0 && g.ride) {
+    const ri = Math.max(0, Math.min(2, g.rowY));
+    const y = (ROWS[0].yf + (ROWS[2].yf - ROWS[0].yf) * (ri / 2)) * H;
+    const s = ROWS[0].s + (ROWS[2].s - ROWS[0].s) * (ri / 2);
+    drawPrompt(W * PLAYER_SCREEN_X, y - 140 * s, `${g.ride.id === 'bike' ? '🚲' : '🛹'} ${g.riding.toFixed(1)}s`, false, t);
   }
 }
 
@@ -2627,6 +2841,27 @@ function startGame() {
   startMusic();
 }
 
+// reaching The Strat doesn't end the night — it banks a bonus and loops you
+// back to Mandalay Bay with the whole Strip running faster
+function nextLap() {
+  const g = game;
+  const sober = g.drunk < 30 ? 500 : 0;
+  const bank = 1000 + Math.round(g.lastCall) + sober;
+  g.score += bank;
+  g.lap++;
+  g.x = 0; g.spawnCursor = 900; g.zoneIdx = 0;
+  g.lastHazardRow = -1; g.lastWaterX = 0; g.lastFoodX = 0; g.lastRideX = 0;
+  g.entities = [];
+  g.grabTarget = null;
+  g.lastCall = 1000; g.lastCallWarned = false;   // the friends moved the party down the Strip
+  g.riding = 0; g.ride = null;
+  buildStrip(g);
+  const rp = ROWS[Math.round(g.rowY)];
+  popText(W * PLAYER_SCREEN_X, rp.yf * H - 150 * rp.s, `🏁 LAP ${g.lap - 1} COMPLETE  +${bank}`, '#3dff8f');
+  showZoneCard({ name: `LAP ${g.lap} — EVERYTHING FASTER`, color: '#ff5cd9' });
+  sfx.win();
+}
+
 function endGame(kind) {
   const g = game;
   g.over = kind;
@@ -2634,12 +2869,9 @@ function endGame(kind) {
   hud.classList.remove('on');
   stopMusic();
 
-  const dist = Math.min(TOTAL, g.x);
+  const dist = (g.lap - 1) * TOTAL + Math.min(TOTAL, g.x);   // lap bonuses are banked in nextLap()
   const distBonus = Math.round(dist / 100);
-  const soberBonus = (kind === 'win' && g.drunk < 30) ? 500 : 0;
-  const finishBonus = kind === 'win' ? 1000 : 0;
-  const lastCallBonus = kind === 'win' ? Math.round(g.lastCall) : 0;
-  const total = Math.round(g.score) + distBonus + soberBonus + finishBonus + lastCallBonus;
+  const total = Math.round(g.score) + distBonus;
   let newBest = false;
   if (total > bestScore) {
     bestScore = total;
@@ -2648,15 +2880,7 @@ function endGame(kind) {
   }
 
   const title = $('end-title'), sub = $('end-sub');
-  if (kind === 'win') {
-    title.textContent = 'YOU MADE IT!';
-    title.className = 'win';
-    sub.textContent = (soberBonus
-      ? 'Mandalay Bay to The Strat — and you could still walk a straight line. Legendary.'
-      : 'Mandalay Bay to The Strat. Your liver would like a word, but you made it.')
-      + (lastCallBonus ? '' : ' Your friends got tired of waiting and left, though.');
-    sfx.win();
-  } else if (kind === 'blackout') {
+  if (kind === 'blackout') {
     title.textContent = 'BLACKOUT';
     title.className = 'lose';
     sub.textContent = `You woke up ${['in the Bellagio fountain', 'in a wedding chapel', 'halfway to Barstow', 'holding a novelty yard glass'][Math.floor(Math.random() * 4)]}. The Strip wins again.`;
@@ -2674,9 +2898,10 @@ function endGame(kind) {
     sfx.lose();
   }
 
-  const zi = Math.min(ZONES.length - 1, Math.floor(dist / ZONE_LEN));
+  const zi = Math.min(ZONES.length - 1, Math.floor(Math.min(TOTAL, g.x) / ZONE_LEN));
   $('end-stats').innerHTML = `
-    <div class="row"><span>MADE IT TO</span><b>${ZONES[zi].name}</b></div>
+    <div class="row"><span>MADE IT TO</span><b>${ZONES[zi].name}${g.lap > 1 ? ` · LAP ${g.lap}` : ''}</b></div>
+    ${g.lap > 1 ? `<div class="row"><span>LAPS FINISHED</span><b>${g.lap - 1} 🏁</b></div>` : ''}
     <div class="row"><span>TIME</span><b>${mmss(g.runTime)}</b></div>
     <div class="row"><span>DRINKS DOWNED</span><b>${g.counts.drink}</b></div>
     <div class="row"><span>FOOD EATEN</span><b>${g.counts.food}</b></div>
@@ -2690,9 +2915,6 @@ function endGame(kind) {
     ${g.slotNet !== 0 ? `<div class="row"><span>SLOTS NET</span><b>${g.slotNet > 0 ? '+' : '−'}$${Math.abs(g.slotNet)}</b></div>` : ''}
     <div class="row"><span>PICKUP SCORE</span><b>${Math.round(g.score)}</b></div>
     <div class="row"><span>DISTANCE BONUS</span><b>+${distBonus}</b></div>
-    ${finishBonus ? `<div class="row"><span>FINISH BONUS</span><b>+${finishBonus}</b></div>` : ''}
-    ${lastCallBonus ? `<div class="row"><span>LAST CALL BONUS</span><b>+${lastCallBonus}</b></div>` : ''}
-    ${soberBonus ? `<div class="row"><span>SOBRIETY BONUS</span><b>+${soberBonus}</b></div>` : ''}
     <div class="row total"><span>TOTAL</span><b>${total}</b></div>
     <div class="row total"><span>BEST</span><b>${bestScore}${newBest ? ' 🏆 NEW!' : ''}</b></div>`;
   $('end-screen').classList.remove('hidden');
