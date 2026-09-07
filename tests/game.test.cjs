@@ -471,3 +471,37 @@ test('detour atlas and all scene door renderers are available', () => {
     assert.equal(h.depth(), 0);
   }
 });
+
+test('perspective keeps collisions aligned and increases size and parallax toward the camera', () => {
+  for (const [width,height] of [[390,844],[844,390],[1440,900],[3840,1600]]) {
+    const h = harness({width,height});
+    h.run(`game.x = 4321; const camera = game.x - W * PLAYER_SCREEN_X;`);
+    for (const row of [0,0.5,1,1.5,2]) {
+      const [x,scale,movement] = h.run(`(() => {
+        const y = (ROWS[0].yf + (ROWS[2].yf-ROWS[0].yf)*${row}/2)*H;
+        return [projectStripX(game.x,camera,y),stripDepth(y),
+          projectStripX(game.x+100,camera,y)-projectStripX(game.x+100,camera+10,y)];
+      })()`);
+      assert.ok(Math.abs(x-width*0.3)<1e-8, 'player and same-world-X object stay aligned');
+      assert.ok(Math.abs(scale-(0.72+row*0.22))<1e-8, 'sprite size matches ground depth');
+      assert.ok(Math.abs(movement-10*scale)<1e-8, 'camera parallax matches depth');
+    }
+  }
+});
+
+test('far-lane objects remain alive while visible on a wide display', () => {
+  const h = harness({width:3840,height:1600});
+  h.run(`game.x=3000; const camera=game.x-W*PLAYER_SCREEN_X;
+    game.spawnCursor=12000;
+    game.entities=[{kind:'water',row:0,worldX:camera-220,t:0},
+      {kind:'water',row:0,worldX:camera-2200,t:0}];
+    spawnAhead();`);
+  assert.equal(h.run('game.entities.length'),1);
+  assert.ok(h.run('projectStripX(game.entities[0].worldX,camera,ROWS[0].yf*H)')>0);
+});
+
+test('spawning reaches beyond the visible edge of the far lane', () => {
+  const h = harness({width:3840,height:1600});
+  h.run('game.x=4000; game.spawnCursor=4000; spawnAhead();');
+  assert.ok(h.run('projectStripX(game.spawnCursor,game.x-W*PLAYER_SCREEN_X,ROWS[0].yf*H)')>3840);
+});

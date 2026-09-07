@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Illustrated edition (2026-09)
 
+The latest visual pass is 2.5-D Canvas rendering in `vegas-art.js`. `stripDepth(y)` and `projectStripX(worldX,camX,y)` share the lane perspective across pavement, entities, prompts, curb props, cop visibility and entity cleanup. `ROWS` now ranges from scale 0.72 to 1.16; collisions and pickup reach remain in world coordinates. Spawn lookahead covers the expanded far-lane view. Buildings have projected roof/side faces and hotel towers; characters remain sprites.
+
 The current game now loads `vegas-art.js`, `vegas-music.js`, `vegas-detours.js`, `redesign-ui.css`, `vegas-detours.css`, and four local PNGs from `assets/`. Keep those files with the HTML; there is still no build step or server requirement. See `README.md` for controls and verification, and `assets/README.md` for generated-art prompts and atlas details. The sections below describe earlier versions and some historical behavior.
 
 Music now lives in `vegas-music.js`: switchable swing, funk and lounge arrangements, independent music volume, and Off (leaves SFX enabled). Style/volume persist in localStorage. The old inline 112 BPM sequencer has been removed.

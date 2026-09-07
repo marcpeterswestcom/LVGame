@@ -33,9 +33,47 @@ function artText(text, x, y, size, color, weight = 700) {
 }
 
 function artShadow(x, y, width, color = '#050b18') {
-  ctx.save(); ctx.globalAlpha *= 0.35; ctx.fillStyle = color;
+  ctx.save(); ctx.globalAlpha *= 0.22; ctx.fillStyle = color;
+  // Long cast shadow and a denser contact shadow anchor objects to the pavement.
+  ctx.beginPath(); ctx.ellipse(x + width * 0.7, y + width * 0.25, width * 1.5, width * 0.26, 0.16, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha *= 1.6;
   ctx.beginPath(); ctx.ellipse(x, y, width, width * 0.19, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+}
+
+function artPoly(points, fill, stroke) {
+  ctx.beginPath(); ctx.moveTo(...points[0]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(...points[i]);
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+// Perspective is shared by paving, actors, prompts and visibility checks.
+// Equal world X stays aligned with the player in every lane.
+function stripDepth(y) {
+  return ROWS[0].s + (y / H - ROWS[0].yf) *
+    (ROWS[2].s - ROWS[0].s) / (ROWS[2].yf - ROWS[0].yf);
+}
+
+function projectStripX(worldX, camX, y) {
+  const anchor = W * PLAYER_SCREEN_X;
+  return anchor + (worldX - camX - anchor) * stripDepth(y);
+}
+
+function artBuildingVolume(x, y, w, h, depth, face, accent) {
+  const vanishingX = W * 0.3;
+  const left = x + (vanishingX - x) * 0.14;
+  const right = x + w + (vanishingX - x - w) * 0.14;
+  // Roof corners recede toward the camera's vanishing point.
+  const roof = ctx.createLinearGradient(0, y-depth, 0, y);
+  roof.addColorStop(0, '#526478'); roof.addColorStop(0.82, '#34485f'); roof.addColorStop(1, '#87909a');
+  artPoly([[x,y],[left,y-depth],[right,y-depth],[x+w,y]], roof, '#8595a5');
+  if (x + w / 2 < vanishingX) {
+    artPoly([[x+w,y],[right,y-depth],[right,y+h-depth],[x+w,y+h]], '#101c30', '#394e65');
+  } else {
+    artPoly([[left,y-depth],[x,y],[x,y+h],[left,y+h-depth]], '#111e31', '#394e65');
+  }
+  artRect(x, y, w, h, 1, face, accent);
 }
 
 function drawIllustratedSkyline(camX) {
@@ -59,7 +97,7 @@ function drawIllustratedSkyline(camX) {
 
 function drawCasinoFronts(camX, t) {
   frameSigns = [];
-  const scale = artScale(), span = 510 * scale;
+  const scale = artScale(), span = 600 * scale;
   const off = camX * MID_P;
   const first = Math.floor(off / span) - 1;
   const zi = game ? Math.max(0, game.zoneIdx) : 0;
@@ -67,18 +105,41 @@ function drawCasinoFronts(camX, t) {
   for (let i = first; i < first + Math.ceil(W / span) + 3; i++) {
     const x = i * span - off;
     const variant = ((i % 3) + 3) % 3;
-    const w = span - 20 * scale;
-    const height = (variant === 0 ? 135 : variant === 1 ? 106 : 120) * scale;
+    const w = span - 95 * scale;
+    const height = (variant === 0 ? 145 : variant === 1 ? 116 : 130) * scale;
     const base = H * streetTopF;
     const y = base - height;
     const accent = variant === 0 ? zone.color : variant === 1 ? '#f37c69' : '#6cd8ce';
     const sign = variant === 0 ? zone.name : variant === 1 ? 'THE NIGHT OWL' : 'LUCKY STAR';
     ctx.save();
-    // A darker side face, layered stone cornices and recessed luminous entrances.
-    artRect(x + 7, y + 8, w, height - 8, 2, '#081323');
+    // Hotel towers sit behind the low casino, with separate roof and side planes.
+    const towerW = w * (variant === 1 ? 0.48 : 0.66);
+    const towerH = (110 + rnd(i + 11) * 100) * scale;
+    const towerX = x + (w - towerW) * 0.5;
+    const towerY = y - towerH + 24 * scale;
+    const towerFace = ctx.createLinearGradient(towerX, 0, towerX + towerW, 0);
+    towerFace.addColorStop(0, '#293c56'); towerFace.addColorStop(0.55, '#49617a'); towerFace.addColorStop(1, '#24374e');
+    artBuildingVolume(towerX, towerY, towerW, towerH, 24 * scale, towerFace, '#78899b');
+    // Recessed window strips and narrow fins give the hotel facade relief.
+    for (let bay = 0; bay < 9; bay++) {
+      const bx = towerX + (9 + bay * (towerW / scale - 20) / 9) * scale;
+      ctx.fillStyle = '#0b203140'; ctx.fillRect(bx, towerY + 10*scale, towerW/12, towerH-10*scale);
+      ctx.fillStyle = '#aac2cf33'; ctx.fillRect(bx-2*scale, towerY+8*scale, 1.5*scale, towerH-8*scale);
+    }
+    for (let floor = 0; floor < Math.floor(towerH / (18 * scale)) - 1; floor++) {
+      for (let room = 0; room < 9; room++) {
+        const lit = rnd(i * 117 + floor * 13 + room) > 0.38;
+        ctx.fillStyle = lit ? (room % 3 === 0 ? '#ffe6ab9c' : '#8ccfe060') : '#101e3399';
+        ctx.fillRect(towerX + (10 + room * (towerW / scale - 20) / 9) * scale,
+          towerY + (12 + floor * 18) * scale, towerW / 14, 8 * scale);
+      }
+    }
+    ctx.fillStyle = accent; ctx.fillRect(towerX, towerY + 3 * scale, towerW, 2 * scale);
+    artRect(towerX + towerW*0.3, towerY - 11*scale, towerW*0.4, 11*scale, 1, '#24394c', '#7b8c9c');
+    ctx.fillStyle = accent; ctx.fillRect(towerX+towerW*0.33,towerY-8*scale,towerW*0.34,2*scale);
     const stone = ctx.createLinearGradient(0, y, 0, base);
     stone.addColorStop(0, '#3d4255'); stone.addColorStop(0.4, '#263647'); stone.addColorStop(1, '#111d2b');
-    artRect(x, y, w - 7, height, 3, stone, '#52606c');
+    artBuildingVolume(x, y, w, height, 32 * scale, stone, '#52606c');
     artRect(x - 4, y + 4, w + 2, 7 * scale, 1, '#8a7b69');
     artRect(x - 2, y + 12 * scale, w, 3 * scale, 0, '#d3b780');
     const entranceY = y + 53 * scale;
@@ -93,6 +154,8 @@ function drawCasinoFronts(camX, t) {
     // Art-deco marquee, with restrained warm bulbs instead of bloom everywhere.
     const signW = Math.min(w - 45 * scale, (sign.length * 13 + 75) * scale);
     const signX = x + (w - signW) / 2;
+    artPoly([[signX-10*scale,y+19*scale],[signX,y+9*scale],
+      [signX+signW+16*scale,y+9*scale],[signX+signW+5*scale,y+19*scale]], '#9a8566', '#e0be87');
     artRect(signX - 5 * scale, y + 19 * scale, signW + 10 * scale, 40 * scale, 5, '#090f21', '#c3a776');
     artRect(signX, y + 24 * scale, signW, 30 * scale, 3, '#152235', accent);
     ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = 5;
@@ -117,22 +180,29 @@ function drawIllustratedSidewalk(camX) {
   ctx.fillStyle = surface; ctx.fillRect(0, top, W, H - top);
   ctx.fillStyle = '#b5b0a0'; ctx.fillRect(0, top - 5, W, 4);
   ctx.fillStyle = '#142638'; ctx.fillRect(0, top - 1, W, 3);
-  const span = 148 * artScale(), off = ((camX % span) + span) % span;
-  for (let row = 0; row < 4; row++) {
-    const y = top + (H - top) * row / 4;
-    const nextY = top + (H - top) * (row + 1) / 4;
-    ctx.strokeStyle = '#a7b7bc17'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    for (let x = -off - span; x < W + span; x += span) {
-      const bx = x + (row % 2) * span / 2;
-      ctx.strokeStyle = '#091b3033';
-      ctx.beginPath(); ctx.moveTo(bx, y); ctx.lineTo(bx - 18, nextY); ctx.stroke();
+  const span = 145 * artScale();
+  const anchor = W * PLAYER_SCREEN_X;
+  const minDepth = stripDepth(top);
+  const first = Math.floor((camX + anchor - anchor / minDepth) / span) - 1;
+  const last = Math.ceil((camX + anchor + (W - anchor) / minDepth) / span) + 1;
+  // Tile joints converge toward the horizon; near tiles move faster than far tiles.
+  const bands = [0, 0.11, 0.26, 0.45, 0.69, 1];
+  for (let row = 0; row < bands.length - 1; row++) {
+    const y = top + (H - top) * bands[row];
+    const nextY = top + (H - top) * bands[row + 1];
+    for (let i = first; i <= last; i++) {
+      const wx = (i + (row % 2) * 0.5) * span;
+      artPoly([[projectStripX(wx,camX,y),y], [projectStripX(wx+span,camX,y),y],
+        [projectStripX(wx+span,camX,nextY),nextY], [projectStripX(wx,camX,nextY),nextY]],
+        (i + row) % 2 ? '#b8c7d309' : '#020c1c12', '#aec5d51c');
     }
   }
-  // Ground lights mark the three playable rows without obscuring the artwork.
+  // Recessed lane lights use the same projection as feet and pickups.
   for (const row of ROWS) {
-    for (let x = -off; x < W; x += span) {
-      ctx.fillStyle = '#c3d3d344'; ctx.fillRect(x, row.yf * H + 7, 10, 2);
+    for (let i = first; i <= last; i++) {
+      const x = projectStripX(i * span, camX, row.yf * H);
+      ctx.fillStyle = '#071727'; ctx.fillRect(x-2, row.yf * H+6, 14*row.s, 4*row.s);
+      ctx.fillStyle = '#a3dfd078'; ctx.fillRect(x, row.yf * H+7, 9*row.s, 2*row.s);
     }
   }
   for (const sign of frameSigns) {
@@ -144,11 +214,11 @@ function drawIllustratedSidewalk(camX) {
 
 function drawPromenadeProps(camX, t) {
   const scale = artScale(), span = 680 * scale;
-  const off = camX * 0.8;
-  const first = Math.floor(off / span) - 1;
-  for (let i = first; i < first + Math.ceil(W / span) + 2; i++) {
-    const x = i * span - off + 100 * scale;
-    const y = H * sidewalkTopF - 10;
+  const y = H * sidewalkTopF - 10;
+  const depth = stripDepth(y), anchor = W * PLAYER_SCREEN_X;
+  const first = Math.floor((camX+anchor-anchor/depth) / span)-1;
+  for (let i = first; i < first + Math.ceil(W / (span*depth)) + 3; i++) {
+    const x = projectStripX(i * span + 100 * scale, camX, y);
     // Props live on the far curb and are drawn BEFORE every gameplay entity.
     ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
     ctx.strokeStyle = '#152434'; ctx.lineWidth = 7;
@@ -161,6 +231,9 @@ function drawPromenadeProps(camX, t) {
       const swing = REDUCED_MOTION ? 0 : Math.sin(t + f + i) * 2;
       ctx.quadraticCurveTo(f * 20, -204, f * 25 + swing, -153 + Math.abs(f) * 5); ctx.stroke();
     }
+    artShadow(6, 2, 33);
+    artPoly([[-26,-21],[-13,-32],[36,-32],[26,-21]], '#829089', '#a8ada0');
+    artPoly([[26,-21],[36,-32],[36,-10],[26,0]], '#152b35');
     artRect(-26, -21, 52, 21, [3,3,8,8], '#253947', '#5b716e');
     artRect(-30, -24, 60, 6, 2, '#6b7c79');
     ctx.restore();
@@ -219,7 +292,15 @@ function drawIllustratedCollectible(e, sx, sy, scale, t) {
   const bob = REDUCED_MOTION ? 0 : Math.sin(e.t * 3 + e.worldX) * 3;
   ctx.save(); ctx.translate(sx, sy); ctx.scale(size, size);
   artShadow(0, 1, 23);
+  artPoly([[-25,-4],[0,-13],[25,-4],[0,5]], '#355163', color+'99');
+  artPoly([[-25,-4],[0,5],[0,10],[-25,1]], '#132a40');
+  artPoly([[0,5],[25,-4],[25,1],[0,10]], '#091b30');
+  const glow = ctx.createLinearGradient(0,-64,0,0);
+  glow.addColorStop(0, color+'00'); glow.addColorStop(1, color+'24');
+  artPoly([[-17,-62],[17,-62],[23,-5],[-23,-5]],glow);
   ctx.translate(0, -51 + bob);
+  artPoly([[27,-33],[34,-39],[34,24],[27,31]], '#061327', color+'55');
+  artPoly([[-27,-33],[-20,-39],[34,-39],[27,-33]], '#527082',color+'88');
   artRect(-27, -33, 54, 64, 12, '#0c213de8', color + 'aa');
   artRect(-23, -29, 46, 3, 1, color);
   ctx.save(); ctx.translate(0, 3); ctx.scale(1.3, 1.3);
@@ -235,6 +316,8 @@ function drawIllustratedCollectible(e, sx, sy, scale, t) {
 function drawIllustratedSlot(e, sx, sy, scale, t) {
   ctx.save(); ctx.translate(sx, sy); ctx.scale(scale * artScale(), scale * artScale());
   artShadow(3, 2, 43);
+  artPoly([[-34,-162],[-19,-176],[48,-176],[34,-162]], '#b7a784', '#f9d99e');
+  artPoly([[34,-162],[48,-176],[48,-38],[34,-22]], '#332c39', '#a6855f');
   artRect(-30, -33, 60, 32, 5, '#172330', '#c1a16c');
   artRect(25, -133, 17, 107, 5, '#755c41', '#c7a671');
   const body = ctx.createLinearGradient(-38, 0, 38, 0);

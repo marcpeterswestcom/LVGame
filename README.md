@@ -38,6 +38,8 @@ Use the buttons, or Tab then Enter. Escape focuses the free exit without selecti
 
 ## Current visual pass
 
+The Strip now uses a 2.5-D perspective: converging pavement tiles, stronger lane depth and character scaling, hotel towers with shaded roofs and side walls, raised marquees, dimensional slot cabinets and pickup stands, and directional ground shadows. Characters remain illustrated sprites. Perspective is shared by objects, prompts, scenery, spawning, and visibility checks so gameplay stays aligned as the world scrolls. No new libraries or downloads are required.
+
 Painted Strip panorama, six-frame tourist walk animation, illustrated cast of eight hazards, zone-named casino fronts, warm slot cabinets, labeled pickups, and curbside scenery drawn behind gameplay. A simplified opening screen puts extra rules in an expandable section. Meters show numeric values. The menus adapt to smaller displays and can scroll when needed.
 
 `vegas-art.js` owns image loading, sprite rectangles and the illustrated rendering helpers. `redesign-ui.css` owns the new presentation. The original Canvas character and skyline routines remain as image-load fallbacks. The legacy `vegas-strip-survivor.html` is unchanged.
@@ -56,4 +58,4 @@ The panorama is shared atmosphere across zones; the casino signs change per zone
 
 Run `node --test tests/game.test.cjs` with Node.js. The suite uses the actual game scripts with stubbed DOM/Canvas/audio/timers. It verifies survival boundaries, slot time and transactions, abandoned spins, focus/pause behavior, lap rollover, and render-command validity across all zones at four viewport sizes, including reduced-motion and missing-image paths. Detour checks cover all choices, affordability, exactly-once transactions, survival warnings, saved souvenirs, cooldowns, VIP risks/rewards, and keyboard focus handling.
 
-These checks do not prove visual layout, real browser rendering, animation quality, or frame rate. Live browser verification was blocked by the browser tool's local-file URL policy; a manual playtest is still needed.
+These checks do not prove visual layout, real browser rendering, animation quality, or frame rate. The perspective pass was also rendered to desktop and phone-landscape Canvas images for visual inspection, without the HTML menus/HUD. Live browser verification was blocked by the browser tool's local-file URL policy; a manual playtest is still needed.
