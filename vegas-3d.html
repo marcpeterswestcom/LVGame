@@ -355,8 +355,10 @@
 <link rel="stylesheet" href="redesign-ui.css">
 <link rel="stylesheet" href="vegas-detours.css">
 <link rel="stylesheet" href="vegas-rides.css">
+<link rel="stylesheet" href="vegas-viewport-3d.css">
 </head>
 <body>
+<div id="viewport-footer-size" aria-hidden="true"></div>
 <canvas id="game" tabindex="0" aria-label="Vegas Strip Survivor game. Arrow keys move, space grabs, P pauses."></canvas>
 
 <div id="hud">
@@ -500,14 +502,26 @@ const ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1;
 
 function resize() {
+  const view = window.visualViewport;
+  const visibleWidth = view?.width || window.innerWidth;
+  const visibleHeight = view?.height || window.innerHeight;
+  const footer = document.getElementById('viewport-footer-size').getBoundingClientRect().height;
   DPR = Math.min(window.devicePixelRatio || 1, 2);
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W * DPR;
-  canvas.height = H * DPR;
+  W = Math.max(1, visibleWidth);
+  H = Math.max(1, visibleHeight - Math.max(48, footer));
+  const style = document.documentElement.style;
+  style.setProperty('--view-width', W + 'px');
+  style.setProperty('--view-height', visibleHeight + 'px');
+  style.setProperty('--play-height', H + 'px');
+  style.setProperty('--view-left', (view?.offsetLeft || 0) + 'px');
+  style.setProperty('--view-top', (view?.offsetTop || 0) + 'px');
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 window.addEventListener('resize', resize);
+window.visualViewport?.addEventListener('resize', resize);
+window.visualViewport?.addEventListener('scroll', resize);
 resize();
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

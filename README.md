@@ -10,6 +10,8 @@ The Strip now uses a 2.5-D perspective: converging pavement tiles, stronger lane
 
 Run the tests normally for the original edition, or set `VEGAS_EDITION=3d` to run them against the separate edition. The perspective and attraction checks always exercise the 3D edition.
 
+The 3D edition also loads `vegas-viewport-3d.css`. Canvas and overlay sizes follow the visible browser viewport, including toolbar resizing and rotation. The playfield reserves a footer of at least 48 pixels (larger when device safe-area padding requires it), keeping the progress bar below the player. Viewport tests simulate mobile toolbar heights, rotation, offsets, safe footer space, and the fallback for browsers without VisualViewport; a physical-phone recheck is still needed.
+
 ## Optional attractions (3D edition only)
 
 Look for RIDE entrances along the Strip and press Space nearby (or tap to grab on touch). The Big Apple Coaster stop is around the southern New York–New York/MGM stretch, and the High Roller is farther north near the middle of the Strip. Both are available once per lap; entrances are nudged clear of other fixtures. Locations follow the game’s compressed route.

@@ -1,0 +1,28 @@
+/* Keep the 3D game, menus, and HUD inside the browser's visible viewport. */
+:root {
+  --view-width:100vw; --view-height:100dvh;
+  --view-left:0px; --view-top:0px;
+  --play-height:calc(100dvh - max(48px, calc(36px + env(safe-area-inset-bottom, 0px))));
+}
+#viewport-footer-size {
+  position:fixed; width:1px;
+  height:max(48px, calc(36px + env(safe-area-inset-bottom, 0px)));
+  visibility:hidden; pointer-events:none;
+}
+#game, #hud, .screen {
+  position:fixed; inset:auto;
+  left:var(--view-left); top:var(--view-top);
+  width:var(--view-width); height:var(--view-height);
+}
+#game { height:var(--play-height); }
+#progress { bottom:max(11px, calc(9px + env(safe-area-inset-bottom, 0px))); }
+#hint { bottom:max(16px, calc(12px + env(safe-area-inset-bottom, 0px))); }
+#detour-status { bottom:max(57px, calc(45px + env(safe-area-inset-bottom, 0px))); }
+.screen {
+  padding-bottom:max(24px, calc(16px + env(safe-area-inset-bottom, 0px)));
+  padding-top:max(24px, env(safe-area-inset-top, 0px));
+  overscroll-behavior:contain;
+}
+@media (max-width:600px) {
+  .meter-panel, #score-panel { top:max(9px, env(safe-area-inset-top, 0px)); }
+}

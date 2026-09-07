@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const defaultEdition = process.env.VEGAS_EDITION === '3d' ? '3d' : 'original';
 
-function harness({ width = 1280, height = 760, images = true, reduced = false, storage = {}, edition = defaultEdition } = {}) {
+function harness({ width = 1280, height = 760, images = true, reduced = false, storage = {}, edition = defaultEdition, viewport = null, footerHeight = 48 } = {}) {
   const html = fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-3d.html' : 'vegas-neon-redux.html'), 'utf8');
   const source = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
   const elements = new Map(), listeners = {}, timers = new Map();
@@ -28,6 +28,7 @@ function harness({ width = 1280, height = 760, images = true, reduced = false, s
     return { style: { setProperty(k,v) { this[k] = v; } }, children: [], attributes: {}, textContent: '', hidden:false, disabled:false,
       classList: { add: (s) => classes.add(s), remove: (s) => classes.delete(s),
         contains: (s) => classes.has(s), toggle(s, on) { if (on) classes.add(s); else classes.delete(s); } },
+      getBoundingClientRect() { return {height:footerHeight}; },
       appendChild(n) { this.children.push(n); }, getContext: () => ctx,
       addEventListener: noop, focus() { sandbox.document.activeElement = this; }, setAttribute(k, v) { this.attributes[k] = v; },
     };
@@ -46,11 +47,11 @@ function harness({ width = 1280, height = 760, images = true, reduced = false, s
     setTimeout: addTimer, clearTimeout: (id) => timers.delete(id),
     setInterval: addTimer, clearInterval: (id) => timers.delete(id),
     localStorage: { getItem: key => storage[key] ?? null, setItem: (key,value) => { storage[key] = String(value); } },
-    window: { innerWidth: width, innerHeight: height, devicePixelRatio: 1,
+    window: { visualViewport: viewport ? { ...viewport, addEventListener(type,fn) { (listeners['viewport:'+type] ||= []).push(fn); } } : undefined, innerWidth: width, innerHeight: height, devicePixelRatio: 1,
       addEventListener(type, fn) { (listeners[type] ||= []).push(fn); },
       matchMedia: () => ({ matches: reduced }),
     },
-    document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element },
+    document: { documentElement: element(), getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element },
   };
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-art-3d.js' : 'vegas-art.js'), 'utf8'), sandbox);
@@ -586,4 +587,47 @@ test('ride skipping, reduced motion and restart cannot leave a pending ride behi
   reduced.run("enterDetour('wheel'); chooseDetour(0);");
   assert.equal(reduced.run('game.detour.stage'),'result');
   assert.equal(reduced.elements.get('ride-skip').hidden,true);
+});
+
+test('3D canvas fits the visible phone viewport and reserves the safe footer', () => {
+  const h=harness({edition:'3d',width:390,height:844,footerHeight:70,
+    viewport:{width:390,height:628,offsetTop:0,offsetLeft:0}});
+  assert.equal(h.run('W'),390);
+  assert.equal(h.run('H'),558);
+  assert.equal(h.elements.get('game').height,558);
+  assert.equal(h.run("document.documentElement.style['--play-height']"),'558px');
+  assert.equal(h.run("document.documentElement.style['--view-height']"),'628px');
+  assert.ok(h.run('ROWS[2].yf*H')<558, 'nearest-lane feet remain above the footer');
+  h.run('draw();');
+  assert.equal(h.depth(),0);
+});
+
+test('browser bars and rotation resize the 3D view without resetting the game', () => {
+  const h=harness({edition:'3d',width:390,height:844,
+    viewport:{width:390,height:628,offsetTop:0,offsetLeft:0}});
+  h.run('game.cash=123; game.x=2000; window.visualViewport.height=720;');
+  h.listeners['viewport:resize'][0]();
+  assert.equal(h.run('H'),672);
+  h.run('window.visualViewport.width=844; window.visualViewport.height=320; window.visualViewport.offsetTop=12; window.visualViewport.offsetLeft=4;');
+  h.listeners['viewport:resize'][0]();
+  assert.equal(h.run('W'),844);
+  assert.equal(h.run('H'),272);
+  assert.equal(h.run("document.documentElement.style['--view-top']"),'12px');
+  assert.equal(h.run("document.documentElement.style['--view-left']"),'4px');
+  assert.equal(h.run('game.cash'),123);
+  assert.equal(h.run('game.x'),2000);
+  h.run('window.visualViewport.offsetTop=0;');
+  h.listeners['viewport:scroll'][0]();
+  assert.equal(h.run("document.documentElement.style['--view-top']"),'0px');
+});
+
+test('3D viewport sizing falls back to window dimensions when needed', () => {
+  const h=harness({edition:'3d',width:844,height:390});
+  assert.equal(h.run('H'),342);
+  h.run('window.innerWidth=390; window.innerHeight=628; window.devicePixelRatio=3;');
+  h.listeners.resize[0]();
+  assert.equal(h.run('W'),390);
+  assert.equal(h.run('H'),580);
+  assert.equal(h.elements.get('game').width,780);
+  assert.equal(h.elements.get('game').height,1160);
 });
