@@ -4,11 +4,26 @@ Open `index.html` in a modern browser; it automatically opens `vegas-neon-redux.
 
 ## Separate 3D edition
 
-`vegas-3d.html` opens the separate 2.5-D edition and loads `vegas-art-3d.js`. The homepage and `vegas-neon-redux.html` keep the original illustrated game. Each edition has its own HTML and art renderer; music, detours, styles, and artwork assets are shared. The 3D edition has its own high score.
+`vegas-3d.html` opens the separate 2.5-D edition and loads `vegas-art-3d.js`. The homepage and `vegas-neon-redux.html` keep the original illustrated game. Each edition has its own HTML and art renderer; music, base styles, and artwork assets are shared. The 3D edition uses its own `vegas-detours-3d.js`, plus `vegas-rides.js` and `vegas-rides.css`, and has its own high score and souvenir storage.
 
 The Strip now uses a 2.5-D perspective: converging pavement tiles, stronger lane depth and character scaling, hotel towers with shaded roofs and side walls, raised marquees, dimensional slot cabinets and pickup stands, and directional ground shadows. Characters remain illustrated sprites. Perspective is shared by objects, prompts, scenery, spawning, and visibility checks so gameplay stays aligned as the world scrolls. No new libraries or downloads are required.
 
-Run the tests normally for the original edition, or set `VEGAS_EDITION=3d` to run them against the separate edition. The three perspective-specific checks always exercise the 3D edition.
+Run the tests normally for the original edition, or set `VEGAS_EDITION=3d` to run them against the separate edition. The perspective and attraction checks always exercise the 3D edition.
+
+## Optional attractions (3D edition only)
+
+Look for RIDE entrances along the Strip and press Space nearby (or tap to grab on touch). The Big Apple Coaster stop is around the southern New York–New York/MGM stretch, and the High Roller is farther north near the middle of the Strip. Both are available once per lap; entrances are nudged clear of other fixtures. Locations follow the game’s compressed route.
+
+| Attraction | Fictional game ticket | Effects | Souvenir |
+| --- | --- | --- | --- |
+| High Roller | $35 | +250 points, −8 drunk, 20 game seconds | Skyline Selfie |
+| Big Apple Coaster | $25 | +350 points, −6 water, 12 game seconds. At 60+ drunk: −18 water total and a brief stumble. | Coaster Survivor |
+
+The wheel has a nine-second animated scene; the coaster has a seven-second scene. Ticket effects are settled exactly once at boarding. Watching does not add game time or meter loss. Skip to arrival with the button or Escape; reduced-motion mode shows the arrival immediately. Insufficient funds disable boarding and leave a free exit. Fatal water loss is warned before boarding and resolves after the result is read. Restart and game end discard ride animation state.
+
+Ride art is drawn locally on Canvas. These scenes are stylized attractions, not real ride simulations. Names are inspired by the [High Roller at The LINQ](https://newsroom.caesars.com/Property-Fact-Sheets/The-LINQ-Hotel--Experience/default.aspx) and [The Big Apple Coaster at New York–New York](https://www.mgmresorts.com/en/things-to-do/new-york-new-york/the-big-apple-coaster-and-arcade.html). Prices, timing, and rewards are game balance choices.
+
+The seven-souvenir 3D collection uses vss-3d-souvenirs; existing original souvenirs are copied on first use, without writing back to the original collection.
 
 ## Play
 

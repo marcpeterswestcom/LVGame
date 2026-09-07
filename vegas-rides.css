@@ -1,0 +1,6 @@
+#ride-preview { position:absolute; top:50%; left:0; width:100%; height:auto; aspect-ratio:1; transform:translateY(-50%); }
+#ride-skip { font-size:16px; padding:13px 20px; margin-top:20px; }
+#ride-skip:focus-visible { outline:3px solid var(--detour-accent); outline-offset:3px; }
+
+.has-attraction .detour-art-caption { display:none; }
+@media (max-width:760px) { .has-attraction .detour-art-wrap { aspect-ratio:1; } }

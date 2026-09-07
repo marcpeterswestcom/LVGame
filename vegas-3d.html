@@ -354,6 +354,7 @@
 </style>
 <link rel="stylesheet" href="redesign-ui.css">
 <link rel="stylesheet" href="vegas-detours.css">
+<link rel="stylesheet" href="vegas-rides.css">
 </head>
 <body>
 <canvas id="game" tabindex="0" aria-label="Vegas Strip Survivor game. Arrow keys move, space grabs, P pauses."></canvas>
@@ -428,7 +429,7 @@
 
 <div class="screen hidden" id="detour-screen" role="dialog" aria-modal="true" aria-labelledby="detour-title" aria-describedby="detour-story">
   <div id="detour-panel">
-    <div class="detour-art-wrap"><div id="detour-art" role="img" aria-label="Illustrated Vegas detour"></div><div class="detour-art-caption">A NIGHT TO REMEMBER. SORT OF.</div></div>
+    <div class="detour-art-wrap"><div id="detour-art" role="img" aria-label="Illustrated Vegas detour"></div><canvas id="ride-preview" width="640" height="640" role="img" aria-label="Animated Vegas attraction" hidden></canvas><div class="detour-art-caption">A NIGHT TO REMEMBER. SORT OF.</div></div>
     <div class="detour-content">
       <div id="detour-tag"></div><h2 id="detour-title" tabindex="-1"></h2><p id="detour-story"></p>
       <div class="detour-meters"><div><span>CASH</span><b id="detour-cash"></b></div><div><span>DRUNK</span><b id="detour-drunk"></b></div><div><span>WATER</span><b id="detour-hyd"></b></div><div><span>LAST CALL</span><b id="detour-clock"></b></div></div>
@@ -439,6 +440,7 @@
         <button class="detour-choice" id="detour-choice-2" type="button"><b id="detour-label-2"></b><span id="detour-effect-2"></span><em id="detour-warning-2"></em></button>
         <div class="detour-key-help">TAB to choose · ENTER to confirm · ESC focuses the free exit</div>
       </div>
+      <button class="btn" id="ride-skip" type="button" hidden>SKIP TO ARRIVAL →</button>
       <div id="detour-result" hidden aria-live="polite"><div id="detour-souvenir"></div><p id="detour-summary"></p><button class="btn" id="detour-continue">BACK TO THE STRIP →</button></div>
     </div>
   </div>
@@ -468,7 +470,7 @@
       <p><b>Keep a little buzz.</b> Drinks earn points, cash and a combo multiplier. Too much booze means blackout; stay sober too long and your score starts slipping. Food lowers your drunk meter. Water restores hydration.</p>
       <p><b>Watch the crowd.</b> Dodge flyers, showgirls, mascots, scooters and pickpockets. Three hits in twelve seconds ends your night. A second police collision, riding into a cop, or bumping one at 60+ drunk means arrest.</p>
       <p><b>Spend wisely.</b> Water carts cost $20, food costs $35, slots cost $25 a pull. Your last-call clock and hydration keep draining while you gamble. Drinks fill your bladder; E takes a relief break. A cop on screen means a $75 fine. If you can’t pay, you’re done.</p>
-      <p><b>Take a detour.</b> Look for STORY doorways: a champagne club, wedding chapel, buffet, pool party, and casino security. Press SPACE nearby to visit. At 70+ drunk you may stumble into the club. Choices show their costs; nothing is purchased automatically. Collect five nightlife souvenirs across your runs.</p>
+      <p><b>Take a detour.</b> Look for STORY doorways: a champagne club, wedding chapel, buffet, pool party, and casino security. Press SPACE nearby to visit. At 70+ drunk you may stumble into the club. Choices show their costs; nothing is purchased automatically. Look for RIDE entrances for the High Roller and the Big Apple Coaster at New York–New York. Collect seven souvenirs across your runs. Ride prices are fictional game prices.</p>
       <p><b>The night keeps going.</b> Reach The Strat to bank a lap bonus. The next lap is faster and busier. Wheels help you move quickly, but one collision means a wipeout.</p>
     </details>
   </div>
@@ -483,7 +485,8 @@
 
 <script src="vegas-art-3d.js"></script>
 <script src="vegas-music.js"></script>
-<script src="vegas-detours.js"></script>
+<script src="vegas-rides.js"></script>
+<script src="vegas-detours-3d.js"></script>
 <script>
 'use strict';
 
@@ -2916,6 +2919,7 @@ function frame(now) {
   lastT = now;
   if (phase === 'play' && !paused) update(dt);
   else if (phase === 'slots') slotTick(dt);
+  else if (phase === 'detour') tickAttraction(dt);
   draw();
   requestAnimationFrame(frame);
 }

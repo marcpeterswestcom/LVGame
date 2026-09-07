@@ -55,7 +55,8 @@ function harness({ width = 1280, height = 760, images = true, reduced = false, s
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-art-3d.js' : 'vegas-art.js'), 'utf8'), sandbox);
   vm.runInContext(fs.readFileSync(path.join(root, 'vegas-music.js'), 'utf8'), sandbox);
-  vm.runInContext(fs.readFileSync(path.join(root, 'vegas-detours.js'), 'utf8'), sandbox);
+  if (edition === '3d') vm.runInContext(fs.readFileSync(path.join(root, 'vegas-rides.js'), 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-detours-3d.js' : 'vegas-detours.js'), 'utf8'), sandbox);
   vm.runInContext(source, sandbox);
   const run = (s) => vm.runInContext(s, sandbox);
   run('muted = true; game = newGame(); phase = "play";');
@@ -258,13 +259,13 @@ test('a delayed audio timer skips missed beats without a catch-up burst', () => 
   assert.ok(h.run('scheduledAudio.every(t => t >= 100)'));
 });
 
-test('each lap places all five distinct detour doorways clear of other fixtures', () => {
+test('each lap places every edition-specific detour clear of other fixtures', () => {
   const h = harness();
-  assert.equal(h.run('game.entities.filter(e => e.kind === "detour").length'), 5);
+  assert.equal(h.run('game.entities.filter(e => e.kind === "detour").length'), defaultEdition === '3d' ? 7 : 5);
   assert.ok(h.run(`game.entities.filter(e => e.kind === 'detour').every(door =>
     game.entities.every(other => other === door || Math.abs(door.worldX - other.worldX) >= 260))`));
   h.run('nextLap();');
-  assert.equal(h.run('game.entities.filter(e => e.kind === "detour").length'), 5);
+  assert.equal(h.run('game.entities.filter(e => e.kind === "detour").length'), defaultEdition === '3d' ? 7 : 5);
 });
 
 test('a marked doorway enters its scene through the normal SPACE grab path', () => {
@@ -296,7 +297,7 @@ test('the $100 champagne is charged once, applies disclosed effects and saves a 
   assert.equal(h.run('game.runTime'), 12);
   assert.equal(h.run('game.lastCall'), 959.2);
   assert.equal(h.run('game.counts.drink'), 1);
-  assert.deepEqual(JSON.parse(h.storage['vss-souvenirs']), ['bottle']);
+  assert.deepEqual(JSON.parse(h.storage[defaultEdition === '3d' ? 'vss-3d-souvenirs' : 'vss-souvenirs']), ['bottle']);
   assert.equal(h.run('game.detour.stage'), 'result');
 });
 
@@ -505,4 +506,84 @@ test('spawning reaches beyond the visible edge of the far lane', () => {
   const h = harness({width:3840,height:1600,edition:'3d'});
   h.run('game.x=4000; game.spawnCursor=4000; spawnAhead();');
   assert.ok(h.run('projectStripX(game.spawnCursor,game.x-W*PLAYER_SCREEN_X,ROWS[0].yf*H)')>3840);
+});
+
+test('ride tickets charge once and award their advertised souvenirs and costs', () => {
+  for (const [id,cost,score,seconds] of [['wheel',35,250,20],['coaster',25,350,12]]) {
+    const h=harness({edition:'3d'});
+    h.run(`game.cash=100; game.drunk=30; game.hyd=80;
+      game.grabTarget=game.entities.find(e=>e.detourId==='${id}'); tryGrab();
+      chooseDetour(0); chooseDetour(0);`);
+    assert.equal(h.run('game.cash'),100-cost);
+    assert.equal(h.run('game.score'),score);
+    assert.equal(h.run('game.runTime'),seconds);
+    assert.equal(h.run('game.detour.stage'),'ride');
+    assert.ok(h.run(`game.souvenirs.has('${id}')`));
+    assert.deepEqual(JSON.parse(h.storage['vss-3d-souvenirs']),[id]);
+    assert.equal(h.storage['vss-souvenirs'],undefined);
+    h.run('finishAttraction(); finishAttraction();');
+    assert.equal(h.run('game.detour.stage'),'result');
+    assert.equal(h.run('game.cash'),100-cost);
+    h.run('resumeDetour();');
+    assert.equal(h.run('phase'),'play');
+    assert.ok(h.run('game.invuln')>=2.5);
+  }
+});
+
+test('unaffordable rides offer a free exit without charging or changing meters', () => {
+  for(const id of ['wheel','coaster']) {
+    const h=harness({edition:'3d'});
+    h.run(`game.cash=0; enterDetour('${id}');`);
+    assert.equal(h.elements.get('detour-choice-0').disabled,true);
+    assert.equal(h.run('chooseDetour(0)'),false);
+    h.run('chooseDetour(1);');
+    assert.equal(h.run('phase'),'play');
+    assert.equal(h.run('game.runTime'),0);
+    assert.equal(h.run('game.cash'),0);
+    assert.equal(h.run('game.hyd'),100);
+  }
+});
+
+test('coaster warnings and outcomes agree at the drunkenness threshold', () => {
+  for(const drunk of [59,60]) {
+    const h=harness({edition:'3d'});
+    h.run(`game.drunk=${drunk}; game.hyd=18; enterDetour('coaster');`);
+    assert.equal(h.elements.get('detour-warning-0').textContent.includes('COLLAPSE'),drunk===60);
+    h.run('chooseDetour(0); finishAttraction();');
+    assert.equal(h.run('game.hyd'),drunk===60?0:12);
+    assert.equal(h.run('phase'),'detour');
+    h.run('resumeDetour();');
+    assert.equal(h.run('phase'),drunk===60?'end':'play');
+  }
+  const h=harness({edition:'3d'});
+  h.run("game.drunk=70; enterDetour('coaster'); chooseDetour(0); finishAttraction(); resumeDetour();");
+  assert.equal(h.run('game.hyd'),82);
+  assert.ok(h.run('game.stagger')>=1.1);
+});
+
+test('ride animations finish automatically while the street and meters remain frozen', () => {
+  for(const id of ['wheel','coaster']) {
+    const h=harness({edition:'3d'});
+    h.run(`enterDetour('${id}'); chooseDetour(0);`);
+    const before=h.run('JSON.stringify([game.x,game.hyd,game.drunk,game.runTime,game.lastCall])');
+    h.run('for(let i=0;i<220;i++) tickAttraction(0.05);');
+    assert.equal(h.run('game.detour.stage'),'result');
+    assert.equal(h.run('JSON.stringify([game.x,game.hyd,game.drunk,game.runTime,game.lastCall])'),before);
+    assert.equal(h.depth(),0);
+  }
+});
+
+test('ride skipping, reduced motion and restart cannot leave a pending ride behind', () => {
+  const h=harness({edition:'3d'});
+  h.run("enterDetour('wheel'); chooseDetour(0); handleDetourKey({key:'Tab',preventDefault(){}});");
+  assert.equal(h.run('document.activeElement === $("ride-skip")'),true);
+  h.run("handleDetourKey({key:'Escape',preventDefault(){}});");
+  assert.equal(h.run('game.detour.stage'),'result');
+  h.run('startGame(); tickAttraction(1);');
+  assert.equal(h.run('game.detour'),null);
+  assert.equal(h.run('game.cash'),50);
+  const reduced=harness({edition:'3d',reduced:true});
+  reduced.run("enterDetour('wheel'); chooseDetour(0);");
+  assert.equal(reduced.run('game.detour.stage'),'result');
+  assert.equal(reduced.elements.get('ride-skip').hidden,true);
 });
