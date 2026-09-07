@@ -4,10 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'vegas-neon-redux.html'), 'utf8');
-const source = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
+const defaultEdition = process.env.VEGAS_EDITION === '3d' ? '3d' : 'original';
 
-function harness({ width = 1280, height = 760, images = true, reduced = false, storage = {} } = {}) {
+function harness({ width = 1280, height = 760, images = true, reduced = false, storage = {}, edition = defaultEdition } = {}) {
+  const html = fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-3d.html' : 'vegas-neon-redux.html'), 'utf8');
+  const source = html.match(/<script>\s*([\s\S]*?)<\/script>/)[1];
   const elements = new Map(), listeners = {}, timers = new Map();
   let timerId = 0, depth = 0, imageDraws = 0;
   const noop = () => {};
@@ -52,7 +53,7 @@ function harness({ width = 1280, height = 760, images = true, reduced = false, s
     document: { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element },
   };
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(path.join(root, 'vegas-art.js'), 'utf8'), sandbox);
+  vm.runInContext(fs.readFileSync(path.join(root, edition === '3d' ? 'vegas-art-3d.js' : 'vegas-art.js'), 'utf8'), sandbox);
   vm.runInContext(fs.readFileSync(path.join(root, 'vegas-music.js'), 'utf8'), sandbox);
   vm.runInContext(fs.readFileSync(path.join(root, 'vegas-detours.js'), 'utf8'), sandbox);
   vm.runInContext(source, sandbox);
@@ -474,7 +475,7 @@ test('detour atlas and all scene door renderers are available', () => {
 
 test('perspective keeps collisions aligned and increases size and parallax toward the camera', () => {
   for (const [width,height] of [[390,844],[844,390],[1440,900],[3840,1600]]) {
-    const h = harness({width,height});
+    const h = harness({width,height,edition:'3d'});
     h.run(`game.x = 4321; const camera = game.x - W * PLAYER_SCREEN_X;`);
     for (const row of [0,0.5,1,1.5,2]) {
       const [x,scale,movement] = h.run(`(() => {
@@ -490,7 +491,7 @@ test('perspective keeps collisions aligned and increases size and parallax towar
 });
 
 test('far-lane objects remain alive while visible on a wide display', () => {
-  const h = harness({width:3840,height:1600});
+  const h = harness({width:3840,height:1600,edition:'3d'});
   h.run(`game.x=3000; const camera=game.x-W*PLAYER_SCREEN_X;
     game.spawnCursor=12000;
     game.entities=[{kind:'water',row:0,worldX:camera-220,t:0},
@@ -501,7 +502,7 @@ test('far-lane objects remain alive while visible on a wide display', () => {
 });
 
 test('spawning reaches beyond the visible edge of the far lane', () => {
-  const h = harness({width:3840,height:1600});
+  const h = harness({width:3840,height:1600,edition:'3d'});
   h.run('game.x=4000; game.spawnCursor=4000; spawnAhead();');
   assert.ok(h.run('projectStripX(game.spawnCursor,game.x-W*PLAYER_SCREEN_X,ROWS[0].yf*H)')>3840);
 });

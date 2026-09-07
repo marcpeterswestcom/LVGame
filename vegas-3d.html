@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vegas Strip Survivor — Neon Redux</title>
+<title>Vegas Strip Survivor — 3D Edition</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Monoton&family=Barlow+Condensed:wght@500;600;700&display=swap');
 
@@ -447,7 +447,7 @@
 <div class="screen" id="start-screen">
   <div class="intro-character" aria-hidden="true"></div>
   <div class="intro-copy">
-    <div class="intro-kicker">ELEVEN CASINOS. ONE VERY LONG NIGHT.</div>
+    <div class="intro-kicker">3D EDITION · A DIFFERENT VIEW OF THE STRIP.</div>
     <h1 class="intro-title">Vegas Strip<br><span>Survivor</span></h1>
     <p class="intro-desc">Make your way from Mandalay Bay to The Strat. Chase the good times. Dodge the wrong people. Remember the water.</p>
     <div class="intro-loop"><span><b>DRINK</b> for points + cash</span><span><b>EAT</b> to sober up</span><span><b>WATER</b> to keep going</span></div>
@@ -481,7 +481,7 @@
   <button class="btn" id="retry-btn">WALK IT AGAIN</button>
 </div>
 
-<script src="vegas-art.js"></script>
+<script src="vegas-art-3d.js"></script>
 <script src="vegas-music.js"></script>
 <script src="vegas-detours.js"></script>
 <script>
@@ -519,9 +519,9 @@ function rnd(seed) {
 const TOTAL = 30000;              // world length in px
 const BASE_SPEED = 150;           // walk speed px/s
 const ROWS = [                    // sidewalk depth rows: far -> near
-  { yf: 0.735, s: 0.80 },
-  { yf: 0.820, s: 0.90 },
-  { yf: 0.905, s: 1.00 },
+  { yf: 0.720, s: 0.72 },
+  { yf: 0.815, s: 0.94 },
+  { yf: 0.910, s: 1.16 },
 ];
 const PLAYER_SCREEN_X = 0.30;     // player's fixed fraction of screen width
 
@@ -618,7 +618,7 @@ const sfx = {
 let game = null;
 let phase = 'start';   // start | play | slots | detour | end
 let paused = false;
-const HS_KEY = 'vss-best';
+const HS_KEY = 'vss-3d-best';
 let bestScore = 0;
 try { bestScore = +(localStorage.getItem(HS_KEY) || 0); } catch (e) {}
 
@@ -823,7 +823,7 @@ function updateHUD() {
 function spawnAhead() {
   const g = game;
   const camX = g.x - W * PLAYER_SCREEN_X;
-  const horizon = camX + W * 1.35;
+  const horizon = camX + W * PLAYER_SCREEN_X + W * (1 - PLAYER_SCREEN_X) / ROWS[0].s + 240;
   while (g.spawnCursor < horizon) {
     const prog = g.spawnCursor / TOTAL;
     g.spawnCursor += 130 + Math.random() * (240 - prog * 90);
@@ -890,7 +890,7 @@ function spawnAhead() {
     }
   }
   // cull entities far behind
-  g.entities = g.entities.filter((e) => !e.dead && e.worldX > camX - 200);
+  g.entities = g.entities.filter((e) => !e.dead && projectStripX(e.worldX, camX, ROWS[e.row].yf * H) > -200);
 }
 
 /* ---------- particles ---------- */
@@ -969,7 +969,8 @@ function update(dt) {
   const copOnScreen = () => {
     const camX = g.x - W * PLAYER_SCREEN_X;
     return g.entities.find((c) => !c.dead && c.kind === 'hazard' && c.type.id === 'cop'
-      && c.worldX - camX > 0 && c.worldX - camX < W);
+      && projectStripX(c.worldX, camX, ROWS[c.row].yf * H) > 0
+      && projectStripX(c.worldX, camX, ROWS[c.row].yf * H) < W);
   };
 
   // hazard status effects + last call countdown
@@ -1732,6 +1733,11 @@ function drawStreet(camX, t) {
       ctx.save();
       ctx.translate(tx.x, ty);
       if (tx.dir < 0) ctx.scale(-1, 1);
+      artShadow(4, 3, 34);
+      artPoly([[-30,-12],[-21,-20],[40,-20],[34,-12]], '#ffdb66');
+      artPoly([[-8,-20],[0,-28],[23,-28],[14,-20]], '#ffe08c');
+      artPoly([[14,-20],[23,-28],[29,-20],[20,-12]], '#244b60', '#e2b332');
+      artPoly([[34,-12],[40,-20],[40,-7],[34,0]], '#a67b15');
       ctx.fillStyle = '#e8b820';
       ctx.beginPath();
       ctx.moveTo(-34, 0); ctx.lineTo(-30, -12); ctx.lineTo(-14, -12); ctx.lineTo(-8, -20);
@@ -2529,7 +2535,7 @@ function drawEntitiesAndPlayer(camX, t) {
   const items = [];
   for (const e of g.entities) {
     if (e.dead) continue;
-    const sx = e.worldX - camX;
+    const sx = projectStripX(e.worldX, camX, ROWS[e.row].yf * H);
     if (sx < -140 || sx > W + 140) continue;
     items.push({ row: e.row, e, sx });
   }
@@ -2555,7 +2561,7 @@ function drawEntitiesAndPlayer(camX, t) {
   // SPACE prompt above whatever's grabbable right now
   if (g.grabTarget) {
     const e = g.grabTarget;
-    const sx = e.worldX - camX;
+    const sx = projectStripX(e.worldX, camX, ROWS[e.row].yf * H);
     const r = ROWS[e.row];
     const tall = e.kind === 'slot' || e.kind === 'vendor' || e.kind === 'detour';
     let text = 'SPACE', bad = false;

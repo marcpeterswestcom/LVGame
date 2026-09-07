@@ -2,6 +2,14 @@
 
 Open `index.html` in a modern browser; it automatically opens `vegas-neon-redux.html` and serves as the GitHub Pages homepage. No build, package installation, or server is required. Keep both HTML files, `vegas-art.js`, `vegas-music.js`, `vegas-detours.js`, `redesign-ui.css`, `vegas-detours.css`, and the `assets` folder together when copying or sharing the game. Google Fonts are optional; system fonts are used offline.
 
+## Separate 3D edition
+
+`vegas-3d.html` opens the separate 2.5-D edition and loads `vegas-art-3d.js`. The homepage and `vegas-neon-redux.html` keep the original illustrated game. Each edition has its own HTML and art renderer; music, detours, styles, and artwork assets are shared. The 3D edition has its own high score.
+
+The Strip now uses a 2.5-D perspective: converging pavement tiles, stronger lane depth and character scaling, hotel towers with shaded roofs and side walls, raised marquees, dimensional slot cabinets and pickup stands, and directional ground shadows. Characters remain illustrated sprites. Perspective is shared by objects, prompts, scenery, spawning, and visibility checks so gameplay stays aligned as the world scrolls. No new libraries or downloads are required.
+
+Run the tests normally for the original edition, or set `VEGAS_EDITION=3d` to run them against the separate edition. The three perspective-specific checks always exercise the 3D edition.
+
 ## Play
 
 - Up / Down or W / S: change sidewalk lane.
@@ -38,7 +46,6 @@ Use the buttons, or Tab then Enter. Escape focuses the free exit without selecti
 
 ## Current visual pass
 
-The Strip now uses a 2.5-D perspective: converging pavement tiles, stronger lane depth and character scaling, hotel towers with shaded roofs and side walls, raised marquees, dimensional slot cabinets and pickup stands, and directional ground shadows. Characters remain illustrated sprites. Perspective is shared by objects, prompts, scenery, spawning, and visibility checks so gameplay stays aligned as the world scrolls. No new libraries or downloads are required.
 
 Painted Strip panorama, six-frame tourist walk animation, illustrated cast of eight hazards, zone-named casino fronts, warm slot cabinets, labeled pickups, and curbside scenery drawn behind gameplay. A simplified opening screen puts extra rules in an expandable section. Meters show numeric values. The menus adapt to smaller displays and can scroll when needed.
 
