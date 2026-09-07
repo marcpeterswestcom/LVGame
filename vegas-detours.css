@@ -1,0 +1,70 @@
+#detour-screen {
+  z-index: 20; padding: 26px; background: #06101de8; backdrop-filter: blur(8px);
+  overflow-y: auto; justify-content: safe center;
+}
+#detour-panel {
+  --detour-accent: #f59cba;
+  display: grid; grid-template-columns: minmax(280px, .92fr) minmax(360px, 1fr);
+  width: min(1060px, 100%); text-align: left; background: #112236;
+  border: 1px solid #c0a6b755; border-radius: 18px; overflow: hidden;
+  box-shadow: 0 24px 100px #0009;
+}
+.detour-art-wrap { position: relative; min-height: 100%; background: #1c1734; }
+#detour-art {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  aspect-ratio: 1; background-image: url('assets/vegas-detours.png');
+  background-size: 300% 200%; background-position: 0 0; background-repeat: no-repeat;
+}
+.detour-art-wrap::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, #0b1b30a8, transparent 30%, transparent 75%, #0b1b3055); }
+.detour-art-caption { position: absolute; bottom: 22px; left: 24px; color: #ffebc7; z-index: 1; font-size: 11px; letter-spacing: 4px; }
+.detour-content { padding: clamp(22px, 3vw, 38px); }
+#detour-tag { font-size: 10px; letter-spacing: 2.5px; color: var(--detour-accent); font-weight: 700; margin-bottom: 13px; }
+#detour-title { font-family: 'Barlow Condensed', sans-serif; color: #fff0d1; font-size: clamp(30px, 4vw, 49px); line-height: 1; margin: 0; outline: none; }
+#detour-story { margin: 17px 0; font-size: 18px; line-height: 1.45; color: #c4d4df; }
+.detour-meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 12px 0; border-block: 1px solid #789caf33; margin: 20px 0 16px; }
+.detour-meters div { display: grid; gap: 4px; }
+.detour-meters span { font-size: 9px; letter-spacing: 1px; color: #8dafc2; }
+.detour-meters b { color: #f5dba8; font-size: 19px; font-variant-numeric: tabular-nums; }
+#detour-note { color: #9db5c5; font-size: 13px; line-height: 1.35; margin: 12px 0; }
+.detour-choice {
+  display: grid; gap: 5px; width: 100%; text-align: left;
+  font-family: 'Barlow Condensed', sans-serif; padding: 13px 15px; margin-top: 9px;
+  background: #1a3349; border: 1px solid #84b0bd66; border-radius: 9px; cursor: pointer;
+}
+.detour-choice:hover { background: #28445a; border-color: var(--detour-accent); }
+.detour-choice:disabled { opacity: .45; cursor: not-allowed; }
+.detour-choice > b { font-size: 18px; color: #f6e3be; font-weight: 700; }
+.detour-choice > span { font-size: 13px; color: #bfd5de; line-height: 1.35; }
+.detour-choice > em { font-style: normal; color: #ffa992; font-size: 13px; font-weight: 700; }
+.detour-choice > em:empty { display: none; }
+.detour-choice:focus-visible, #detour-continue:focus-visible { outline: 3px solid var(--detour-accent); outline-offset: 3px; }
+#detour-souvenir { margin-top: 20px; padding: 12px; border: 1px solid #d9bd7544; background: #eec9880d; color: #f7d894; letter-spacing: 1px; font-size: 15px; border-radius: 7px; }
+#detour-souvenir:empty { display: none; }
+#detour-summary { color: #aac7ce; font-size: 15px; margin-top: 15px; }
+#detour-continue { font-size: 17px; padding: 13px 20px; margin-top: 22px; }
+.detour-key-help { font-size: 11px; letter-spacing: .5px; color: #86a6b9; margin-top: 14px; }
+#detour-status { position: absolute; bottom: 57px; left: 50%; transform: translateX(-50%); background: #143449e8; border: 1px solid #83e2df66; padding: 7px 13px; border-radius: 20px; color: #abf0e8; font-size: 12px; text-align: center; white-space: nowrap; }
+#souvenir-line { color: #8fb4c0; font-size: 12px; max-width: 530px; margin-top: 13px; line-height: 1.5; letter-spacing: .5px; }
+#detour-screen [hidden], #detour-status[hidden] { display: none !important; }
+.is-kicked #detour-art { animation: bounced-out .45s ease-out; }
+@keyframes bounced-out { 0% { transform: translate(15px, -50%) rotate(2deg); } 65% { transform: translate(-6px, -50%) rotate(-1deg); } 100% { transform: translate(0, -50%); } }
+@media (max-width: 760px) {
+  #detour-screen { padding: 14px; }
+  #detour-panel { grid-template-columns: 1fr; max-width: 510px; }
+  .detour-art-wrap { min-height: 0; aspect-ratio: 1.6; overflow: hidden; }
+  #detour-art { width: 100%; }
+  .detour-art-caption { bottom: 12px; font-size: 9px; }
+  .detour-content { padding: 22px; }
+  #detour-title { font-size: 33px; }
+  #detour-story { font-size: 16px; margin-block: 13px; }
+  .detour-meters { margin-top: 14px; }
+  #detour-status { font-size: 10px; max-width: 94vw; white-space: normal; }
+}
+@media (max-height: 600px) and (min-width: 761px) {
+  #detour-screen { padding: 14px; }
+  .detour-content { padding: 21px; }
+  #detour-title { font-size: 33px; }
+  #detour-story { font-size: 15px; }
+  .detour-choice { padding: 9px 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .is-kicked #detour-art { animation: none; } }

@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Illustrated edition (2026-09)
+
+The current game now loads `vegas-art.js`, `vegas-music.js`, `vegas-detours.js`, `redesign-ui.css`, `vegas-detours.css`, and four local PNGs from `assets/`. Keep those files with the HTML; there is still no build step or server requirement. See `README.md` for controls and verification, and `assets/README.md` for generated-art prompts and atlas details. The sections below describe earlier versions and some historical behavior.
+
+Music now lives in `vegas-music.js`: switchable swing, funk and lounge arrangements, independent music volume, and Off (leaves SFX enabled). Style/volume persist in localStorage. The old inline 112 BPM sequencer has been removed.
+
+Nightlife scenes now live in `vegas-detours.js` with `phase === 'detour'`: club, chapel, buffet, pool VIP, security. Five optional STORY doors per lap; the club can also trigger at 70+ drunk once per lap after a cooldown. Decisions freeze the world and apply only disclosed fixed costs. Result screens precede fatal-purchase endings. `game.vipTime` boosts drink points and hazard probability during active walking. `game.souvenirs` is per run; `vss-souvenirs` persists the collection. See README for tuning and outcome values.
+
+Current corrections: `checkSurvival()` handles immediate blackout/collapse before metabolism; `tickRunClock()` advances last call and run time in both walking and slots; outstanding slot callbacks are canceled at game end/restart. Focus loss pauses walking and clears held inputs. Run `node --test tests/game.test.cjs` for regression checks.
+
 ## Project Overview
 
 **Vegas Strip Survivor** — walk the Las Vegas Strip from Mandalay Bay to the Stratosphere without blacking out or dehydrating.

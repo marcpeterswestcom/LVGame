@@ -352,22 +352,24 @@
     #sick-banner.show, .meter .lbl .warn.show { animation: none; }
   }
 </style>
+<link rel="stylesheet" href="redesign-ui.css">
+<link rel="stylesheet" href="vegas-detours.css">
 </head>
 <body>
-<canvas id="game"></canvas>
+<canvas id="game" tabindex="0" aria-label="Vegas Strip Survivor game. Arrow keys move, space grabs, P pauses."></canvas>
 
 <div id="hud">
   <div class="meter-panel">
     <div class="meter">
-      <div class="lbl" id="drunk-lbl"><span>DRUNK</span><span class="warn" id="drunk-warn">EAT SOMETHING!</span></div>
+      <div class="lbl" id="drunk-lbl"><span>DRUNK <span class="meter-value" id="drunk-num">0</span></span><span class="warn" id="drunk-warn">EAT SOMETHING!</span></div>
       <div class="track"><div class="fill" id="drunk-fill"></div></div>
     </div>
     <div class="meter">
-      <div class="lbl" id="hyd-lbl"><span>HYDRATION</span><span class="warn" id="hyd-warn">DRINK WATER!</span></div>
+      <div class="lbl" id="hyd-lbl"><span>HYDRATION <span class="meter-value" id="hyd-num">100</span></span><span class="warn" id="hyd-warn">DRINK WATER!</span></div>
       <div class="track"><div class="fill" id="hyd-fill"></div></div>
     </div>
     <div class="meter">
-      <div class="lbl" id="blad-lbl"><span>BLADDER</span><span class="warn" id="blad-warn">FIND A SPOT! (E)</span></div>
+      <div class="lbl" id="blad-lbl"><span>BLADDER <span class="meter-value" id="blad-num">0</span></span><span class="warn" id="blad-warn">FIND A SPOT! (E)</span></div>
       <div class="track"><div class="fill" id="blad-fill"></div></div>
     </div>
   </div>
@@ -382,6 +384,7 @@
     <div id="tally">🍸 0 &nbsp; 🌮 0 &nbsp; 💧 0</div>
   </div>
 
+  <div id="hud-actions"><button class="hud-button" id="pause-btn" aria-label="Pause game">PAUSE</button><button class="hud-button" id="mute-btn" aria-label="Mute audio">SOUND ON</button><button class="hud-button" id="music-btn">♫ VEGAS SWING</button></div>
   <div id="sick-banner">🤢 YOU FEEL SICK 🤢</div>
   <div id="buzz-banner">🥱 TOO SOBER — THIS IS VEGAS 🥱</div>
 
@@ -398,6 +401,7 @@
     <div id="zone-now"></div>
   </div>
 
+  <div id="detour-status" hidden></div>
   <div id="hint">↑↓ MOVE &nbsp; SPACE GRAB &nbsp; E PEE &nbsp; → SPRINT &nbsp; ← SLOW &nbsp; M MUTE &nbsp; P PAUSE</div>
 </div>
 
@@ -412,6 +416,7 @@
     <div id="slot-msg">$25 a pull. Feeling lucky?</div>
     <div id="slot-pay">7️⃣×3 $500 &nbsp; 💎×3 $300 &nbsp; 🔔×3 $150 &nbsp; 🍒×3 $100 &nbsp; ⭐×3 $75 &nbsp; 🍋×3 $50 &nbsp; pair $35</div>
     <div id="slot-cash">CASH $50</div>
+    <div id="slot-clock">LAST CALL 4:54</div>
     <div id="slot-hyd-wrap"><div id="slot-hyd"></div></div>
     <div id="slot-hyd-lbl">HYDRATION KEEPS DRAINING — THE DESERT DOESN'T PAUSE</div>
     <div id="slot-btns">
@@ -421,23 +426,52 @@
   </div>
 </div>
 
-<div class="screen" id="start-screen">
-  <div class="eyebrow">MANDALAY BAY ➜ THE STRAT</div>
-  <div class="title">VEGAS STRIP<br><span class="alt">SURVIVOR</span></div>
-  <div class="sub">Walk the whole Strip before last call. Stay upright. Stay hydrated. Make it to The Strat and the night starts over — faster.</div>
-  <div class="sub" id="best-line" style="color: var(--neon-gold); font-size: 15px;"></div>
-  <div class="rules">
-    <div class="rule r-drink"><div class="ico">🍹</div><h3>DRINKS = POINTS + CASH</h3><p>Tap SPACE to grab. Points and comp dollars — but each one leaves you drunker and drier. Stay bone-sober too long and Vegas drains your score.</p></div>
-    <div class="rule r-pee"><div class="ico">🚻</div><h3>NATURE CALLS</h3><p>Every drink fills your bladder. Tap E for a pee break before you burst — but you're a sitting duck mid-stream.</p></div>
-    <div class="rule r-food"><div class="ico">🌮</div><h3>FOOD SOAKS IT UP</h3><p>Grab freebies or buy from vendor carts to bring the drunk meter back down.</p></div>
-    <div class="rule r-water"><div class="ico">💧</div><h3>WATER SAVES YOU</h3><p>It's the desert — hydration always drains. Grab bottles or buy them from carts.</p></div>
-    <div class="rule r-slots"><div class="ico">🎰</div><h3>GAMBLE FOR CASH</h3><p>Slots outside every casino. Win big for water money — but the meters keep running.</p></div>
-    <div class="rule r-sick"><div class="ico">🤢</div><h3>DON'T GET SICK</h3><p>Too drunk or too dry and you're sick: wobbly, slow, bleeding points. Max out either and it's over — and cops arrest hammered tourists on sight.</p></div>
-    <div class="rule r-ride"><div class="ico">🛹</div><h3>GRAB SOME WHEELS</h3><p>Skateboards and BMX bikes double your speed — but everything comes at you fast, and one hit is a wipeout. Watch for rental scooters flying down the sidewalk.</p></div>
-    <div class="rule r-danger"><div class="ico">💸</div><h3>THE STRIP BITES BACK</h3><p>Pickpockets take every dollar you have. Three hits in twelve seconds puts you down for good. And a fine you can't pay — or a second run-in with the law — ends the night.</p></div>
+<div class="screen hidden" id="detour-screen" role="dialog" aria-modal="true" aria-labelledby="detour-title" aria-describedby="detour-story">
+  <div id="detour-panel">
+    <div class="detour-art-wrap"><div id="detour-art" role="img" aria-label="Illustrated Vegas detour"></div><div class="detour-art-caption">A NIGHT TO REMEMBER. SORT OF.</div></div>
+    <div class="detour-content">
+      <div id="detour-tag"></div><h2 id="detour-title" tabindex="-1"></h2><p id="detour-story"></p>
+      <div class="detour-meters"><div><span>CASH</span><b id="detour-cash"></b></div><div><span>DRUNK</span><b id="detour-drunk"></b></div><div><span>WATER</span><b id="detour-hyd"></b></div><div><span>LAST CALL</span><b id="detour-clock"></b></div></div>
+      <p id="detour-note"></p>
+      <div id="detour-controls">
+        <button class="detour-choice" id="detour-choice-0" type="button"><b id="detour-label-0"></b><span id="detour-effect-0"></span><em id="detour-warning-0"></em></button>
+        <button class="detour-choice" id="detour-choice-1" type="button"><b id="detour-label-1"></b><span id="detour-effect-1"></span><em id="detour-warning-1"></em></button>
+        <button class="detour-choice" id="detour-choice-2" type="button"><b id="detour-label-2"></b><span id="detour-effect-2"></span><em id="detour-warning-2"></em></button>
+        <div class="detour-key-help">TAB to choose · ENTER to confirm · ESC focuses the free exit</div>
+      </div>
+      <div id="detour-result" hidden aria-live="polite"><div id="detour-souvenir"></div><p id="detour-summary"></p><button class="btn" id="detour-continue">BACK TO THE STRIP →</button></div>
+    </div>
   </div>
-  <div class="controls"><b>↑</b>/<b>↓</b> or <b>W</b>/<b>S</b> change lane &nbsp;·&nbsp; <b>SPACE</b> grab / buy / play &nbsp;·&nbsp; <b>E</b> pee break &nbsp;·&nbsp; <b>→</b>/<b>D</b> sprint &nbsp;·&nbsp; <b>←</b>/<b>A</b> slow</div>
-  <button class="btn" id="start-btn">START WALKING</button>
+</div>
+
+<div class="screen" id="start-screen">
+  <div class="intro-character" aria-hidden="true"></div>
+  <div class="intro-copy">
+    <div class="intro-kicker">ELEVEN CASINOS. ONE VERY LONG NIGHT.</div>
+    <h1 class="intro-title">Vegas Strip<br><span>Survivor</span></h1>
+    <p class="intro-desc">Make your way from Mandalay Bay to The Strat. Chase the good times. Dodge the wrong people. Remember the water.</p>
+    <div class="intro-loop"><span><b>DRINK</b> for points + cash</span><span><b>EAT</b> to sober up</span><span><b>WATER</b> to keep going</span></div>
+    <div class="music-settings">
+      <label for="music-style">SOUNDTRACK
+        <select id="music-style"><option value="swing">Vegas Swing</option><option value="funk">Poolside Funk</option><option value="lounge">After Hours Lounge</option><option value="off">Off</option></select>
+      </label>
+      <label for="music-volume">MUSIC VOLUME
+        <input id="music-volume" type="range" min="0" max="100" value="55" aria-label="Music volume">
+      </label>
+    </div>
+    <div id="best-line"></div>
+    <div id="souvenir-line"></div>
+    <button class="btn" id="start-btn">LET’S HIT THE STRIP &nbsp; →</button>
+    <div class="controls" id="start-controls"><b>↑ ↓</b> change lane · <b>SPACE</b> grab / buy / play<br><b>→</b> sprint · <b>←</b> slow · <b>E</b> relief · <b>P</b> pause</div>
+    <details class="how-to">
+      <summary>The rules of the night</summary>
+      <p><b>Keep a little buzz.</b> Drinks earn points, cash and a combo multiplier. Too much booze means blackout; stay sober too long and your score starts slipping. Food lowers your drunk meter. Water restores hydration.</p>
+      <p><b>Watch the crowd.</b> Dodge flyers, showgirls, mascots, scooters and pickpockets. Three hits in twelve seconds ends your night. A second police collision, riding into a cop, or bumping one at 60+ drunk means arrest.</p>
+      <p><b>Spend wisely.</b> Water carts cost $20, food costs $35, slots cost $25 a pull. Your last-call clock and hydration keep draining while you gamble. Drinks fill your bladder; E takes a relief break. A cop on screen means a $75 fine. If you can’t pay, you’re done.</p>
+      <p><b>Take a detour.</b> Look for STORY doorways: a champagne club, wedding chapel, buffet, pool party, and casino security. Press SPACE nearby to visit. At 70+ drunk you may stumble into the club. Choices show their costs; nothing is purchased automatically. Collect five nightlife souvenirs across your runs.</p>
+      <p><b>The night keeps going.</b> Reach The Strat to bank a lap bonus. The next lap is faster and busier. Wheels help you move quickly, but one collision means a wipeout.</p>
+    </details>
+  </div>
 </div>
 
 <div class="screen hidden" id="end-screen">
@@ -447,6 +481,9 @@
   <button class="btn" id="retry-btn">WALK IT AGAIN</button>
 </div>
 
+<script src="vegas-art.js"></script>
+<script src="vegas-music.js"></script>
+<script src="vegas-detours.js"></script>
 <script>
 'use strict';
 
@@ -575,72 +612,11 @@ const sfx = {
   accident: () => { [320, 260, 210, 150].forEach((f, i) => setTimeout(() => tone(f, f * 0.8, 0.22, 'sawtooth', 0.08), i * 150)); },
 };
 
-/* ---------- synthwave backing track (tiny step sequencer) ---------- */
-const music = { on: false, gain: null, timer: null, step: 0, nextT: 0 };
-const M_SPB = 60 / 112 / 4;   // 112 BPM, 16th-note steps
-const M_BASS = [45, 0, 45, 0, 48, 0, 45, 0, 43, 0, 43, 0, 40, 0, 43, 48];   // A-C-G-E minor groove
-const M_ARP = [69, 72, 76, 72, 67, 72, 76, 79];
-const midiF = (m) => 440 * Math.pow(2, (m - 69) / 12);
-
-function mNote(f, dur, type, g0, t0, fEnd) {
-  const a = ac, o = a.createOscillator(), g = a.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(f, t0);
-  if (fEnd) o.frequency.exponentialRampToValueAtTime(fEnd, t0 + dur);
-  g.gain.setValueAtTime(g0, t0);
-  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-  o.connect(g); g.connect(music.gain);
-  o.start(t0); o.stop(t0 + dur + 0.02);
-}
-function mHat(t0) {
-  const a = ac, len = 0.04;
-  const buf = a.createBuffer(1, Math.floor(a.sampleRate * len), a.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
-  const src = a.createBufferSource(); src.buffer = buf;
-  const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6500;
-  const g = a.createGain(); g.gain.value = 0.10;
-  src.connect(f); f.connect(g); g.connect(music.gain);
-  src.start(t0);
-}
-function schedMusic() {
-  const a = ac;
-  if (!a || !music.on) return;
-  while (music.nextT < a.currentTime + 0.18) {
-    const s = music.step % 16;
-    const bar = Math.floor(music.step / 16);
-    if (s % 4 === 0) mNote(120, 0.12, 'sine', 0.7, music.nextT, 40);                    // kick
-    if (s % 4 === 2) mHat(music.nextT);                                                 // offbeat hats
-    const b = M_BASS[s];
-    if (b) mNote(midiF(b), M_SPB * 1.8, 'sawtooth', 0.16, music.nextT);                 // bass
-    if (bar % 4 === 3 && s % 2 === 0) mNote(midiF(M_ARP[(s / 2) % 8]), M_SPB * 1.2, 'triangle', 0.06, music.nextT);  // sparkle every 4th bar
-    music.step++;
-    music.nextT += M_SPB;
-  }
-}
-function startMusic() {
-  const a = audio();
-  if (!a) return;
-  stopMusic();
-  music.gain = a.createGain();
-  music.gain.gain.value = muted ? 0 : 0.5;
-  music.gain.connect(a.destination);
-  music.step = 0;
-  music.nextT = a.currentTime + 0.05;
-  music.on = true;
-  music.timer = setInterval(schedMusic, 60);
-}
-function stopMusic() {
-  if (music.timer) clearInterval(music.timer);
-  music.timer = null;
-  music.on = false;
-  if (music.gain) { try { music.gain.disconnect(); } catch (e) {} }
-  music.gain = null;
-}
+/* Music arrangements and scheduler live in vegas-music.js. */
 
 /* ---------- game state ---------- */
 let game = null;
-let phase = 'start';   // start | play | end
+let phase = 'start';   // start | play | slots | detour | end
 let paused = false;
 const HS_KEY = 'vss-best';
 let bestScore = 0;
@@ -663,11 +639,12 @@ function newGame() {
     recentHits: [],          // hit timestamps for the 12s trample window
     copStrikes: 0,           // sober cop bumps; 2 = arrested (persists across laps)
     cash: 50, slotNet: 0,
+    detour: null, nextDetourAt: 18, autoClubLap: 0, vipTime: 0, souvenirs: new Set(),
     sick: false,
     score: 0,
     stagger: 0, invuln: 0,
     walkPhase: 0,
-    counts: { drink: 0, food: 0, water: 0, hits: 0, pees: 0, accidents: 0, tickets: 0 },
+    counts: { drink: 0, food: 0, water: 0, hits: 0, pees: 0, accidents: 0, tickets: 0, detours: 0 },
     entities: [],            // {kind:'drink'|'food'|'water'|'hazard'|'slot'|'vendor', worldX, row, type, t, dead}
     particles: [],           // {x,y,vx,vy,life,text?,c,r?}
     taxis: [],
@@ -707,19 +684,19 @@ function buildStrip(g) {
     vi++;
     vx += 2300 + (vi % 3) * 260;
   }
+  buildDetourStops(g);
 }
 
 /* ---------- input ---------- */
 const keys = {};
 window.addEventListener('keydown', (e) => {
+  if (phase === 'detour') { handleDetourKey(e); return; }
+  if (e.target?.closest?.('select, input')) return;
+  if (e.target?.closest?.('button, summary') && (e.key === ' ' || e.key === 'Enter')) return;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
   const k = e.key.toLowerCase();
-  if (k === 'm') {
-    muted = !muted;
-    if (music.gain) music.gain.gain.value = muted ? 0 : 0.5;
-    return;
-  }
-  if (k === 'p' && phase === 'play') { paused = !paused; return; }
+  if (k === 'm') { if (!e.repeat) toggleMute(); return; }
+  if (k === 'p' && phase === 'play') { if (!e.repeat) togglePause(); return; }
   if (phase === 'slots') {
     if (k === ' ') slotPull();
     if (k === 'escape' || k === 'enter') exitSlots();
@@ -783,6 +760,7 @@ canvas.addEventListener('touchend', (ev) => {
 if (IS_TOUCH) {
   window.addEventListener('DOMContentLoaded', () => {
     $('hint').textContent = 'SWIPE ↑↓ MOVE · TAP GRAB · DOUBLE-TAP PEE · HOLD TO SPRINT';
+    $('start-controls').textContent = 'Swipe up / down to change lane · Tap to grab · Double-tap for relief · Hold to sprint';
   });
 }
 
@@ -809,6 +787,11 @@ function showZoneCard(zone) {
 }
 
 function updateHUD() {
+  $('detour-status').hidden = game.vipTime <= 0;
+  $('detour-status').textContent = `POOL VIP · ${Math.ceil(game.vipTime)}s · 1.5× DRINK POINTS · MORE HAZARDS`;
+  $('drunk-num').textContent = Math.round(game.drunk);
+  $('hyd-num').textContent = Math.round(game.hyd);
+  $('blad-num').textContent = Math.round(game.bladder);
   $('drunk-fill').style.width = game.drunk.toFixed(1) + '%';
   $('hyd-fill').style.width = game.hyd.toFixed(1) + '%';
   $('blad-fill').style.width = game.bladder.toFixed(1) + '%';
@@ -864,7 +847,7 @@ function spawnAhead() {
       const r = Math.random();
       const zi = Math.min(ZONES.length - 1, Math.floor(cur / ZONE_LEN));
       const lapHeat = 1 + (g.lap - 1) * 0.15;   // later laps pack the sidewalk tighter
-      const hazardChance = Math.min(0.72, (0.34 + prog * 0.14) * ZONES[zi].haz * lapHeat);
+      const hazardChance = Math.min(0.72, (0.34 + prog * 0.14) * ZONES[zi].haz * lapHeat + (g.vipTime > 0 ? 0.10 : 0));
       if (r < hazardChance) kind = 'hazard';
       else if (r < hazardChance + 0.38) kind = 'drink';
       else if (r < hazardChance + 0.52) kind = 'food';
@@ -921,10 +904,31 @@ function burst(x, y, c, n) {
   }
 }
 
+function checkSurvival() {
+  if (!game || phase === 'end') return phase === 'end';
+  if (game.drunk >= 100) { endGame('blackout'); return true; }
+  if (game.hyd <= 0) { endGame('collapse'); return true; }
+  return false;
+}
+
+function tickRunClock(dt) {
+  const g = game;
+  g.runTime += dt;
+  g.lastCall = Math.max(0, g.lastCall - dt * 3.4);
+  if (!g.lastCallWarned && g.lastCall > 0 && g.lastCall <= 204) {   // 60 seconds on the clock
+    g.lastCallWarned = true;
+    const rp = ROWS[Math.round(g.rowY)];
+    popText(W * PLAYER_SCREEN_X, rp.yf * H - 150 * rp.s, '⏰ ONE MINUTE TO LAST CALL — HURRY!', '#ffc233');
+    sfx.zone();
+  }
+}
+
 /* ---------- update ---------- */
 function update(dt) {
+  if (checkSurvival()) return;
   const g = game;
   g.time += dt;
+  g.vipTime = Math.max(0, g.vipTime - dt);
 
   // speed
   const prog = g.x / TOTAL;
@@ -969,16 +973,9 @@ function update(dt) {
   };
 
   // hazard status effects + last call countdown
-  g.runTime += dt;
   g.handsFull = Math.max(0, g.handsFull - dt);
   g.dazzled = Math.max(0, g.dazzled - dt);
-  g.lastCall = Math.max(0, g.lastCall - dt * 3.4);
-  if (!g.lastCallWarned && g.lastCall > 0 && g.lastCall <= 204) {   // 60 seconds on the clock
-    g.lastCallWarned = true;
-    const rp = ROWS[Math.round(g.rowY)];
-    popText(W * PLAYER_SCREEN_X, rp.yf * H - 150 * rp.s, '⏰ ONE MINUTE TO LAST CALL — HURRY!', '#ffc233');
-    sfx.zone();
-  }
+  tickRunClock(dt);
 
   // pee break in progress: stand still, drain the bladder, stay exposed
   if (g.peeing > 0) {
@@ -1062,8 +1059,7 @@ function update(dt) {
   if (g.sick) g.score = Math.max(0, g.score - dt * 5);
 
   // fail / lap rollover — the Strip never ends, it just gets faster
-  if (g.drunk >= 100) return endGame('blackout');
-  if (g.hyd <= 0) return endGame('collapse');
+  if (checkSurvival()) return;
   if (g.x >= TOTAL) return nextLap();
 
   // timers
@@ -1184,6 +1180,7 @@ function update(dt) {
             g.stagger = 0.9;
             popText(sxp, sy - 110 * rowDef.s, '-40  FREE SHOT 🥃', '#ff5c5c');
         }
+        if (checkSurvival()) return;
         // any hit at ride speed is a full wipeout on top of the usual damage
         if (g.riding > 0) {
           g.riding = 0; g.ride = null;
@@ -1207,7 +1204,7 @@ function update(dt) {
         burst(sxp, sy - 50 * rowDef.s, '#ff5c5c', 14);
         sfx.hit();
       }
-    } else if (e.kind === 'slot' || e.kind === 'vendor') {
+    } else if (e.kind === 'slot' || e.kind === 'vendor' || e.kind === 'detour') {
       const dx = Math.abs(e.worldX - px);
       if (dx < 70 && dx < bestGrab) { bestGrab = dx; g.grabTarget = e; }
     } else {
@@ -1233,6 +1230,7 @@ function update(dt) {
   g.particles = g.particles.filter((p) => p.life > 0);
 
   updateHUD();
+  maybeEnterDetour();
 }
 
 /* ---------- pee breaks ---------- */
@@ -1262,6 +1260,7 @@ function tryGrab() {
     return;
   }
 
+  if (e.kind === 'detour') { enterDetour(e.detourId, e); return; }
   if (e.kind === 'slot') { enterSlots(); return; }
 
   if (e.kind === 'vendor') {
@@ -1300,7 +1299,7 @@ function tryGrab() {
   } else if (e.kind === 'drink') {
     const d = e.type;
     const tip = Math.max(5, Math.round(d.pts / 10));
-    const pts = d.pts * g.combo;
+    const pts = Math.round(d.pts * g.combo * (g.vipTime > 0 ? 1.5 : 1));
     g.counts.drink++;
     g.score += pts;
     g.cash += tip;
@@ -1329,6 +1328,7 @@ function tryGrab() {
     burst(sxp, sy - 60 * rowDef.s, '#45c8ff', 10);
     sfx.water();
   }
+  checkSurvival();
 }
 
 /* ---------- slot machine mini-game ---------- */
@@ -1346,6 +1346,16 @@ function slotMsg(m, c) {
 function updateSlotUI() {
   $('slot-cash').textContent = 'CASH $' + game.cash;
   $('slot-hyd').style.width = game.hyd.toFixed(1) + '%';
+  $('slot-clock').textContent = game.lastCall > 0 ? 'LAST CALL ' + mmss(game.lastCall / 3.4) : 'LAST CALL IS OVER';
+}
+
+function cancelSlotSpin() {
+  if (slotSpin) {
+    slotSpin.intervals.forEach(clearInterval);
+    slotSpin.timers.forEach(clearTimeout);
+    slotSpin = null;
+  }
+  for (let i = 0; i < 3; i++) $('reel' + i).classList.remove('spin');
 }
 
 function enterSlots() {
@@ -1374,23 +1384,27 @@ function slotPull() {
   updateSlotUI();
   slotMsg('...');
   const result = [0, 1, 2].map(() => SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)]);
-  slotSpin = { done: 0 };
+  const spin = { done: 0, intervals: [], timers: [] };
+  slotSpin = spin;
   for (let i = 0; i < 3; i++) {
     const el = $('reel' + i);
     el.classList.add('spin');
     const int = setInterval(() => {
+      if (slotSpin !== spin) return;
       el.textContent = SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)];
     }, 65);
-    setTimeout(() => {
+    spin.intervals.push(int);
+    spin.timers.push(setTimeout(() => {
       clearInterval(int);
+      if (slotSpin !== spin) return;
       el.classList.remove('spin');
       el.textContent = result[i];
       tone(280 + i * 140, 280 + i * 140, 0.08, 'square', 0.07);
-      if (slotSpin && ++slotSpin.done === 3) {
+      if (++spin.done === 3) {
         slotSpin = null;
         slotResult(result);
       }
-    }, 620 + i * 430);
+    }, 620 + i * 430));
   }
 }
 
@@ -1412,15 +1426,15 @@ function slotResult(r) {
 }
 
 function slotTick(dt) {
+  if (checkSurvival()) return;
   const g = game;
   g.time += dt;
+  tickRunClock(dt);
   g.hyd = Math.max(0, g.hyd - dt * 0.6);
   g.drunk = Math.max(0, g.drunk - dt * 1.0);
   updateSlotUI();
   updateHUD();
   if (g.hyd <= 0) {
-    slotSpin = null;
-    $('slot-screen').classList.add('hidden');
     endGame('collapse');
   }
 }
@@ -1454,8 +1468,8 @@ function draw() {
   drawSidewalk(camX, t);
 
   if (g) {
-    drawEntitiesAndPlayer(camX, t);
     drawForeground(camX, t);
+    drawEntitiesAndPlayer(camX, t);
     drawParticles();
   } else {
     drawForeground(camX, t);
@@ -1500,6 +1514,7 @@ function drawSky(t) {
 /* ---------- far skyline: landmark silhouettes ---------- */
 const FAR_P = 0.14;
 function drawFarSkyline(camX, t) {
+  if (drawIllustratedSkyline(camX)) return;
   const baseY = H * streetTopF;
   const off = camX * FAR_P;
 
@@ -1681,70 +1696,14 @@ const SIGNS = [
 // remember sign screen positions each frame for wet reflections
 let frameSigns = [];
 
-function drawMidBuildings(camX, t) {
-  const baseY = H * streetTopF + H * 0.015;
-  const off = camX * MID_P;
-  const span = 270;
-  const first = Math.floor(off / span) - 1;
-  frameSigns = [];
-
-  for (let i = first; i < first + Math.ceil(W / span) + 3; i++) {
-    const bx = i * span - off;
-    const bw = 190 + rnd(i * 5.7) * 70;
-    const bh = H * (0.16 + rnd(i * 8.3) * 0.14);
-    const topY = baseY - bh;
-
-    // facade
-    const fg = ctx.createLinearGradient(bx, topY, bx, baseY);
-    fg.addColorStop(0, '#2b1745');
-    fg.addColorStop(1, '#190d2e');
-    ctx.fillStyle = fg;
-    ctx.fillRect(bx, topY, bw, bh);
-    // roof edge
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(bx, topY, bw, 3);
-
-    // windows
-    const cols = Math.floor(bw / 34), rows = Math.floor((bh - 46) / 30);
-    for (let r2 = 0; r2 < rows; r2++) {
-      for (let c2 = 0; c2 < cols; c2++) {
-        const lit = rnd(i * 31 + r2 * 11 + c2 * 5) > 0.5;
-        const flick = rnd(i * 17 + r2 * 3 + c2 * 13) > 0.93 && Math.sin(t * 7 + i + c2) > 0;
-        if (lit || flick) {
-          ctx.fillStyle = flick ? 'rgba(255,240,190,0.8)' : `rgba(255,214,140,${0.18 + rnd(i + r2 + c2) * 0.3})`;
-          ctx.fillRect(bx + 12 + c2 * 34, topY + 12 + r2 * 30, 14, 18);
-        }
-      }
-    }
-
-    // neon sign
-    const sign = SIGNS[((i % SIGNS.length) + SIGNS.length) % SIGNS.length];
-    const sy = baseY - 26;
-    const buzzing = rnd(i * 3.3) > 0.8 && Math.sin(t * 11 + i * 2) < -0.7;
-    const alpha = buzzing ? 0.35 : 1;
-    ctx.save();
-    ctx.font = "700 21px 'Barlow Condensed', sans-serif";
-    ctx.textAlign = 'center';
-    ctx.shadowColor = sign.c; ctx.shadowBlur = 14;
-    ctx.fillStyle = sign.c;
-    ctx.globalAlpha = alpha;
-    ctx.fillText(sign.text, bx + bw / 2, sy);
-    ctx.globalAlpha = 1;
-    ctx.restore();
-    frameSigns.push({ x: bx + bw / 2, c: sign.c, a: alpha });
-
-    // sign underline tube
-    ctx.strokeStyle = sign.c + '99'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(bx + 24, sy + 9); ctx.lineTo(bx + bw - 24, sy + 9); ctx.stroke();
-  }
-}
+function drawMidBuildings(camX, t) { drawCasinoFronts(camX, t); }
 
 /* ---------- street ---------- */
 function drawStreet(camX, t) {
   const y0 = H * streetTopF, y1 = H * sidewalkTopF;
   const sg = ctx.createLinearGradient(0, y0, 0, y1);
-  sg.addColorStop(0, '#0e0a1c');
-  sg.addColorStop(1, '#171129');
+  sg.addColorStop(0, '#102133');
+  sg.addColorStop(1, '#1d3346');
   ctx.fillStyle = sg;
   ctx.fillRect(0, y0, W, y1 - y0);
 
@@ -1761,7 +1720,7 @@ function drawStreet(camX, t) {
   }
 
   // lane dashes
-  const off = (camX * 0.7) % 70;
+  const off = ((camX * 0.7) % 70 + 70) % 70;
   ctx.fillStyle = 'rgba(255,214,120,0.25)';
   const ly = (y0 + y1) / 2;
   for (let x = -off; x < W; x += 70) ctx.fillRect(x, ly, 34, 3);
@@ -1791,61 +1750,11 @@ function drawStreet(camX, t) {
 }
 
 /* ---------- sidewalk ---------- */
-function drawSidewalk(camX, t) {
-  const y0 = H * sidewalkTopF;
-  // curb
-  ctx.fillStyle = '#3a3152';
-  ctx.fillRect(0, y0 - 6, W, 6);
-  const wg = ctx.createLinearGradient(0, y0, 0, H);
-  wg.addColorStop(0, '#241d3c');
-  wg.addColorStop(1, '#312850');
-  ctx.fillStyle = wg;
-  ctx.fillRect(0, y0, W, H - y0);
-
-  // wet reflections continue onto sidewalk
-  for (const s of frameSigns) {
-    const rg = ctx.createLinearGradient(0, y0, 0, H);
-    rg.addColorStop(0, s.c + '22');
-    rg.addColorStop(1, s.c + '00');
-    ctx.fillStyle = rg;
-    ctx.globalAlpha = 0.65 * s.a;
-    const wob = Math.sin(t * 2.2 + s.x * 0.03) * 9;
-    ctx.fillRect(s.x - 30 + wob, y0, 60, H - y0);
-    ctx.globalAlpha = 1;
-  }
-
-  // expansion joints, splayed slightly for perspective
-  const span = 130;
-  const off = camX % span;
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = 2;
-  for (let x = -off - span; x < W + span; x += span) {
-    ctx.beginPath();
-    ctx.moveTo(x, y0);
-    ctx.lineTo(x - 26, H);
-    ctx.stroke();
-  }
-  // subtle row guide lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-  ctx.lineWidth = 1;
-  for (const r of ROWS) {
-    ctx.beginPath(); ctx.moveTo(0, r.yf * H + 6); ctx.lineTo(W, r.yf * H + 6); ctx.stroke();
-  }
-}
+function drawSidewalk(camX, t) { drawIllustratedSidewalk(camX); }
 
 /* ---------- foreground props ---------- */
 const FORE_P = 1.28;
-function drawForeground(camX, t) {
-  const off = camX * FORE_P;
-  const span = 620;
-  const first = Math.floor(off / span) - 1;
-  for (let i = first; i < first + Math.ceil(W / span) + 3; i++) {
-    const x = i * span - off + rnd(i * 7.7) * 180;
-    const kind = rnd(i * 2.9);
-    if (kind < 0.55) drawPalm(x, H * 1.02, 1.1 + rnd(i) * 0.4, t, i);
-    else drawLamppost(x, H * 1.0, t);
-  }
-}
+function drawForeground(camX, t) { drawPromenadeProps(camX, t); }
 
 function drawPalm(x, y, s, t, seed) {
   ctx.save();
@@ -1903,6 +1812,7 @@ function limb(x1, y1, x2, y2, w, c) {
 
 /* --- player (faces right, origin at feet) --- */
 function drawPlayer(sx, sy, scale, t) {
+  if (drawIllustratedPlayer(sx, sy, scale, t)) return;
   const g = game;
   ctx.save();
   ctx.translate(sx, sy);
@@ -2057,6 +1967,7 @@ function drawPlayerRide(rt, t) {
 
 /* --- hazards (drawn facing left = toward player) --- */
 function drawHazard(e, sx, sy, scale, t) {
+  if (!drawIllustratedHazard(e, sx, sy, scale, t)) {
   ctx.save();
   ctx.translate(sx, sy);
   ctx.scale(-scale, scale);   // characters walk left; art drawn facing right, mirrored
@@ -2081,6 +1992,8 @@ function drawHazard(e, sx, sy, scale, t) {
   }
   ctx.restore();
 
+  } // procedural art fallback
+
   // pickpocket telegraph: that glint over his head is your money
   if (e.type.id === 'thief') {
     ctx.save();
@@ -2092,7 +2005,7 @@ function drawHazard(e, sx, sy, scale, t) {
     ctx.fillStyle = '#ffd24a';
     ctx.font = "700 22px 'Barlow Condensed', sans-serif";
     ctx.textAlign = 'center';
-    ctx.fillText('$', 0, -108 - Math.abs(Math.sin(t * 4)) * 4);
+    ctx.fillText('$', 0, -165 * artScale() - (REDUCED_MOTION ? 0 : Math.abs(Math.sin(t * 4)) * 4));
     ctx.restore();
   }
 
@@ -2107,7 +2020,7 @@ function drawHazard(e, sx, sy, scale, t) {
     ctx.fillStyle = '#ff5c5c';
     ctx.font = "700 26px 'Barlow Condensed', sans-serif";
     ctx.textAlign = 'center';
-    ctx.fillText('!', 0, -118 - Math.abs(Math.sin(t * 6)) * 5);
+    ctx.fillText('!', 0, -165 * artScale() - (REDUCED_MOTION ? 0 : Math.abs(Math.sin(t * 6)) * 5));
     ctx.restore();
   }
 }
@@ -2449,35 +2362,7 @@ function drawRobot(et) {
 }
 
 /* --- collectibles --- */
-function drawCollectible(e, sx, sy, scale, t) {
-  ctx.save();
-  const bob = Math.sin(e.t * 3 + e.worldX) * 5;
-  ctx.translate(sx, sy - 46 * scale + bob * scale);
-  ctx.scale(scale, scale);
-
-  // glow ring
-  const c = e.kind === 'drink' ? e.type.c : e.kind === 'food' ? '#ffb066' : e.kind === 'ride' ? e.type.c : '#45c8ff';
-  ctx.save();
-  ctx.shadowColor = c; ctx.shadowBlur = 18;
-  ctx.strokeStyle = c + '55';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, -8, 26 + Math.sin(t * 4 + e.worldX) * 2.5, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
-
-  ctx.save();
-  ctx.shadowColor = c; ctx.shadowBlur = 10;
-  if (e.kind === 'drink') drawGlass(e.type);
-  else if (e.kind === 'food') drawFood(e.type);
-  else if (e.kind === 'ride') drawRidePickup(e.type);
-  else drawWaterBottle();
-  ctx.restore();
-
-  // ground shadow
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.ellipse(0, 46 - bob, 13, 3.6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
+function drawCollectible(e, sx, sy, scale, t) { drawIllustratedCollectible(e, sx, sy, scale, t); }
 
 // grabbable wheels, floating like every other pickup
 function drawRidePickup(rt) {
@@ -2661,6 +2546,7 @@ function drawEntitiesAndPlayer(camX, t) {
       const r = ROWS[it.e.row];
       if (it.e.kind === 'hazard') drawHazard(it.e, it.sx, r.yf * H, r.s, t);
       else if (it.e.kind === 'slot') drawSlotMachine(it.e, it.sx, r.yf * H, r.s, t);
+      else if (it.e.kind === 'detour') drawDetourDoor(it.e, it.sx, r.yf * H, r.s, t);
       else if (it.e.kind === 'vendor') drawVendor(it.e, it.sx, r.yf * H, r.s, t);
       else drawCollectible(it.e, it.sx, r.yf * H, r.s, t);
     }
@@ -2671,14 +2557,15 @@ function drawEntitiesAndPlayer(camX, t) {
     const e = g.grabTarget;
     const sx = e.worldX - camX;
     const r = ROWS[e.row];
-    const tall = e.kind === 'slot' || e.kind === 'vendor';
+    const tall = e.kind === 'slot' || e.kind === 'vendor' || e.kind === 'detour';
     let text = 'SPACE', bad = false;
     if (e.kind === 'vendor') {
       if (g.cash >= e.price) text = `SPACE · $${e.price}`;
       else { text = `NEED $${e.price}`; bad = true; }
     } else if (e.kind === 'slot') text = 'SPACE · PLAY';
     else if (e.kind === 'ride') text = 'SPACE · RIDE';
-    drawPrompt(sx, r.yf * H - (tall ? 168 : 112) * r.s, text, bad, t);
+    else if (e.kind === 'detour') text = g.riding > 0 ? 'ON FOOT ONLY' : 'SPACE · VISIT';
+    drawPrompt(sx, r.yf * H - (tall ? 188 : 119) * r.s * artScale(), text, bad, t);
   }
 
   // ride timer over the player's head
@@ -2686,7 +2573,7 @@ function drawEntitiesAndPlayer(camX, t) {
     const ri = Math.max(0, Math.min(2, g.rowY));
     const y = (ROWS[0].yf + (ROWS[2].yf - ROWS[0].yf) * (ri / 2)) * H;
     const s = ROWS[0].s + (ROWS[2].s - ROWS[0].s) * (ri / 2);
-    drawPrompt(W * PLAYER_SCREEN_X, y - 140 * s, `${g.ride.id === 'bike' ? '🚲' : '🛹'} ${g.riding.toFixed(1)}s`, false, t);
+    drawPrompt(W * PLAYER_SCREEN_X, y - 179 * s * artScale(), `${g.ride.id === 'bike' ? '🚲' : '🛹'} ${g.riding.toFixed(1)}s`, false, t);
   }
 }
 
@@ -2708,81 +2595,15 @@ function drawPrompt(x, y, text, bad, t) {
 }
 
 /* --- slot machine cabinet (attract mode: reels idle-cycle) --- */
-function drawSlotMachine(e, sx, sy, scale, t) {
-  ctx.save();
-  ctx.translate(sx, sy);
-  ctx.scale(scale * 1.1, scale * 1.1);
-
-  ctx.globalAlpha = 0.3;
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.ellipse(0, 0, 34, 7, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // stand + cabinet
-  ctx.fillStyle = '#1c1030';
-  ctx.fillRect(-18, -26, 36, 26);
-  const cg = ctx.createLinearGradient(-30, -120, 30, -26);
-  cg.addColorStop(0, '#4a2868');
-  cg.addColorStop(1, '#2c1848');
-  ctx.fillStyle = cg;
-  ctx.beginPath(); ctx.roundRect(-30, -120, 60, 96, 8); ctx.fill();
-  ctx.strokeStyle = 'rgba(255,194,51,0.5)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // reel window with idle-cycling symbols
-  ctx.fillStyle = '#0d0a18';
-  ctx.fillRect(-23, -106, 46, 28);
-  ctx.font = '13px sans-serif';
-  ctx.textAlign = 'center';
-  for (let i = 0; i < 3; i++) {
-    const sym = SLOT_SYMBOLS[(e.seed * 2 + i + Math.floor(t * 1.5)) % SLOT_SYMBOLS.length];
-    ctx.fillText(sym, -13 + i * 13, -87);
-  }
-
-  // buttons + coin tray
-  ctx.fillStyle = '#ff2d78';
-  ctx.beginPath(); ctx.arc(-9, -64, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#00e5ff';
-  ctx.beginPath(); ctx.arc(6, -64, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#0d0a18';
-  ctx.fillRect(-16, -46, 32, 10);
-
-  // marquee
-  ctx.save();
-  ctx.shadowColor = '#ffc233';
-  ctx.shadowBlur = 12 + Math.sin(t * 4 + e.seed) * 5;
-  ctx.fillStyle = '#ffc233';
-  ctx.beginPath(); ctx.roundRect(-30, -138, 60, 17, 5); ctx.fill();
-  ctx.restore();
-  ctx.fillStyle = '#2c1848';
-  ctx.font = "700 12px 'Barlow Condensed', sans-serif";
-  ctx.fillText('SLOTS', 0, -125);
-
-  // blinking chase bulbs
-  for (let i = 0; i < 5; i++) {
-    const on = (Math.floor(t * 5) + i) % 5 === 0;
-    ctx.fillStyle = on ? '#fff0c0' : '#8a6a20';
-    ctx.beginPath(); ctx.arc(-24 + i * 12, -143, 2.2, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // lever
-  ctx.strokeStyle = '#8894a8';
-  ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(30, -96); ctx.lineTo(40, -112); ctx.stroke();
-  ctx.fillStyle = '#ff2d78';
-  ctx.beginPath(); ctx.arc(41, -114, 5, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
-}
+function drawSlotMachine(e, sx, sy, scale, t) { drawIllustratedSlot(e, sx, sy, scale, t); }
 
 /* --- vendor cart --- */
 function drawVendor(e, sx, sy, scale, t) {
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.scale(scale * 1.1, scale * 1.1);
+  ctx.scale(scale * artScale() * 1.1, scale * artScale() * 1.1);
   const isWater = e.item === 'water';
-  const accent = isWater ? '#00e5ff' : '#ff5c8a';
+  const accent = isWater ? '#83ded6' : '#f39078';
 
   ctx.globalAlpha = 0.3;
   ctx.fillStyle = '#000';
@@ -2797,8 +2618,8 @@ function drawVendor(e, sx, sy, scale, t) {
 
   // cart body + counter
   const bg = ctx.createLinearGradient(0, -52, 0, -8);
-  bg.addColorStop(0, '#38255c');
-  bg.addColorStop(1, '#241840');
+  bg.addColorStop(0, '#536c79');
+  bg.addColorStop(1, '#233b50');
   ctx.fillStyle = bg;
   ctx.beginPath(); ctx.roundRect(-40, -52, 80, 44, 5); ctx.fill();
   ctx.fillStyle = '#4a3466';
@@ -2933,12 +2754,19 @@ function drawOverlays(t) {
    ========================================================= */
 
 function startGame() {
+  closeDetour();
+  cancelSlotSpin();
+  releaseInputs();
   game = newGame();
   phase = 'play';
   paused = false;
+  $('pause-btn').textContent = 'PAUSE';
+  $('pause-btn').setAttribute('aria-label', 'Pause game');
   $('start-screen').classList.add('hidden');
   $('end-screen').classList.add('hidden');
+  $('slot-screen').classList.add('hidden');
   hud.classList.add('on');
+  canvas.focus();
   audio();
   startMusic();
 }
@@ -2966,6 +2794,9 @@ function nextLap() {
 
 function endGame(kind) {
   const g = game;
+  closeDetour();
+  cancelSlotSpin();
+  $('slot-screen').classList.add('hidden');
   g.over = kind;
   phase = 'end';
   hud.classList.remove('on');
@@ -3024,6 +2855,8 @@ function endGame(kind) {
     ${g.counts.accidents ? `<div class="row"><span>ACCIDENTS</span><b>${g.counts.accidents} 💦</b></div>` : ''}
     ${g.counts.tickets ? `<div class="row"><span>URINATION TICKETS</span><b>${g.counts.tickets} 🚨</b></div>` : ''}
     ${g.copStrikes ? `<div class="row"><span>COP STRIKES</span><b>${g.copStrikes} 👮</b></div>` : ''}
+    <div class="row"><span>NIGHTLIFE DETOURS</span><b>${g.counts.detours}</b></div>
+    ${g.souvenirs.size ? `<div class="row"><span>SOUVENIRS</span><b>${[...g.souvenirs].map(id => DETOUR_SOUVENIRS[id]).join(' · ')}</b></div>` : ''}
     <div class="row"><span>BEST COMBO</span><b>×${g.bestCombo}</b></div>
     <div class="row"><span>CASH LEFT</span><b>$${g.cash}</b></div>
     ${g.slotNet !== 0 ? `<div class="row"><span>SLOTS NET</span><b>${g.slotNet > 0 ? '+' : '−'}$${Math.abs(g.slotNet)}</b></div>` : ''}
@@ -3034,6 +2867,36 @@ function endGame(kind) {
   $('end-screen').classList.remove('hidden');
 }
 
+function toggleMute() {
+  muted = !muted;
+  updateMusicLevel();
+  $('mute-btn').textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  $('mute-btn').setAttribute('aria-label', muted ? 'Unmute audio' : 'Mute audio');
+}
+function togglePause() {
+  if (phase !== 'play') return;
+  paused = !paused;
+  updateMusicLevel();
+  $('pause-btn').textContent = paused ? 'RESUME' : 'PAUSE';
+  $('pause-btn').setAttribute('aria-label', paused ? 'Resume game' : 'Pause game');
+}
+function releaseInputs() {
+  for (const key of Object.keys(keys)) keys[key] = false;
+  clearTimeout(holdTimer);
+  sprintTouch = false; touchStart = null;
+}
+window.addEventListener('blur', () => {
+  releaseInputs();
+  if (phase === 'play' && !paused) togglePause();
+});
+canvas.addEventListener('touchcancel', releaseInputs);
+$('music-style').addEventListener('change', e => setMusicStyle(e.target.value));
+$('music-volume').addEventListener('input', e => setMusicVolume(Number(e.target.value) / 100));
+$('music-btn').addEventListener('click', cycleMusic);
+syncMusicControls();
+initDetours();
+$('pause-btn').addEventListener('click', togglePause);
+$('mute-btn').addEventListener('click', toggleMute);
 $('start-btn').addEventListener('click', startGame);
 $('retry-btn').addEventListener('click', startGame);
 $('pull-btn').addEventListener('click', slotPull);
